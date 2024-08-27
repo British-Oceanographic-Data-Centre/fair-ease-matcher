@@ -45,12 +45,12 @@ themes_map = {
 }
 
 
-def analyse_from_full_xml(xml_string, restrict_to_themes):        
+def analyse_from_full_xml(xml_string, restrict_to_themes, include_deprecated):        
     types_to_text = extract_full_xml(xml_string)            
     mapping = {"all": [("uris", None)]}
     collected_t2t = collect_types(types_to_text)                
     query_args = get_query_args(collected_t2t, mapping, restrict_to_themes)            
-    all_queries = generate_queries(query_args)
+    all_queries = generate_queries(query_args, include_deprecated=True)
     all_bindings, head = run_all_queries(all_queries)
 
     _all_search_terms = [list(i.values()) for i in collected_t2t.values()]
@@ -87,7 +87,7 @@ def collect_types(types_to_text: dict):
     return result
 
 
-def analyse_from_netcdf(file_bytes, restrict_to_themes=None):
+def analyse_from_netcdf(file_bytes, include_deprecated, restrict_to_themes=None):
     # Use the memory argument to read from file_bytes
     rootgrp = Dataset(filename=None, mode="r", memory=file_bytes, format="NETCDF3")
     # try get URNs
@@ -151,7 +151,7 @@ def analyse_from_netcdf(file_bytes, restrict_to_themes=None):
     }
 
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
-    all_queries = generate_queries(query_args)
+    all_queries = generate_queries(query_args, include_deprecated=True)
     all_bindings, head = run_all_queries(all_queries)
 
     _all_search_terms = [list(i.values()) for i in all_metadata_elems.values()]
@@ -199,7 +199,7 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
-def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:                
+def analyse_from_geodab_terms(terms, restrict_to_theme, include_deprecated=True) -> dict:                
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
     restrict_to_theme = map_geodab_meta_to_sparql_meta(restrict_to_theme)
@@ -224,7 +224,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:
     }    
     
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme)    
-    all_queries = generate_queries(query_args)                                    
+    all_queries = generate_queries(query_args, include_deprecated=True)                                    
     all_bindings, head = run_all_queries(all_queries)            
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
     
@@ -248,7 +248,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:
     proximity_query_args = get_query_args(
         all_metadata_elems, mapping, restrict_to_theme
     )
-    proximity_queries = generate_queries(proximity_query_args, proximity=True)
+    proximity_queries = generate_queries(proximity_query_args, include_deprecated=True, proximity=True)
     if proximity_queries:
         proximity_bindings, _ = run_all_queries(proximity_queries)
         all_bindings.extend(proximity_bindings)
@@ -269,7 +269,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:
     
     return results
 
-def analyse_from_xml_structure(xml, threshold, restrict_to_themes) -> dict:
+def analyse_from_xml_structure(xml, threshold, restrict_to_themes, include_deprecated=True) -> dict:
     root = ET.fromstring(xml)
     logger.info("Obtained root from remote XML.")
     
@@ -299,7 +299,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes) -> dict:
     }
     
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
-    all_queries = generate_queries(query_args)            
+    all_queries = generate_queries(query_args, include_deprecated=include_deprecated)            
     all_bindings, head = run_all_queries(all_queries)        
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
         
@@ -356,7 +356,7 @@ def run_all_queries(all_queries):
     return all_bindings, head
 
 
-def generate_queries(query_args, proximity=False):            
+def generate_queries(query_args, proximity=False, include_deprecated=False):            
     all_queries = []
     for query_type, kwargs in query_args.items():
         if kwargs["terms"]:
@@ -364,7 +364,7 @@ def generate_queries(query_args, proximity=False):
                 pass  # don't need proximity search on
             else:
                 queries = create_query(
-                    **kwargs, query_type=query_type, proximity=proximity
+                    **kwargs, query_type=query_type, proximity=proximity, include_deprecated=include_deprecated
                 )                
                 all_queries.extend([(query_type, query) for query in queries])                                
     return all_queries
@@ -464,7 +464,7 @@ def flatten_results(json_doc, method):
     return new_head, new_bindings
 
 
-def create_query(predicate, terms, query_type, theme_uris=None, proximity=False):
+def create_query(predicate, terms, query_type, theme_uris=None, proximity=False, include_deprecated=False):
     queries = []
     if "uri" in query_type:
         template = Template(Path("src/sparql/uri_query_template.sparql").read_text())
@@ -476,7 +476,7 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False)
     # Render the template with the necessary parameters
 
     query = template.render(
-        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris
+        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, include_deprecated=include_deprecated
     )  # template imported at module level.
     queries.append(query)        
     return queries
@@ -535,7 +535,7 @@ def run_method_dab_terms(doc_name, results, terms, restrict_to_theme):
     ] = analyse_from_geodab_terms(terms, restrict_to_theme)
     
 def run_methods(
-        doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type
+        doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, include_deprecated=True
 ):
     results[doc_name] = {}
     if method_type == "XML":  # run specified xml methods
@@ -544,16 +544,16 @@ def run_methods(
                 results[doc_name][
                     app.config["Methods"]["metadata"][method]
                 ] = analyse_from_xml_structure(
-                    xml_string, threshold, restrict_to_themes
+                    xml_string, threshold, restrict_to_themes, include_deprecated=include_deprecated
                 )
             elif method == "full":
                 results[doc_name][
                     app.config["Methods"]["metadata"][method]
-                ] = analyse_from_full_xml(xml_string, restrict_to_themes)
+                ] = analyse_from_full_xml(xml_string, restrict_to_themes, include_deprecated=include_deprecated)
     if method_type == "NETCDF":  # run netCDF methods - currently just the one
         results[doc_name][
             app.config["Methods"]["netcdf"]["netcdf"]
-        ] = analyse_from_netcdf(xml_string, restrict_to_themes)
+        ] = analyse_from_netcdf(xml_string, restrict_to_themes, include_deprecated=include_deprecated)
 
 def extract_urns_from_netcdf(rootgrp: Dataset, var_name: str):
     var_urns = []
