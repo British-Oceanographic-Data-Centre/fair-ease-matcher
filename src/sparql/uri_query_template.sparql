@@ -44,6 +44,10 @@ SELECT ?SearchTerm ?MatchURI ?MatchProperty ?MatchTerm ?Container ?ContainerLabe
       COALESCE(?isDeprecated, "false") = "false", "Accepted", "Deprecated"
       ) AS ?Status
     )
+    {% if exclude_deprecated %}
+      FILTER(?Status = "Accepted") .
+    {% endif %}
+
     BIND(?MatchURI AS ?SearchTerm)
     BIND("N/A" AS ?MatchProperty)
     BIND(COALESCE(?MatchLabel,"") AS ?MatchTerm)

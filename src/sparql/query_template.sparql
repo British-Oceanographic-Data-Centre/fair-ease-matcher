@@ -55,6 +55,9 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
     COALESCE(?isDeprecated, "false") = "false", "Accepted", "Deprecated"
     ) AS ?Status
   )
+  {% if exclude_deprecated %}
+      FILTER(?Status = "Accepted") .
+  {% endif %}
   BIND(COALESCE(?OptContainer,"") AS ?Container)
   BIND(COALESCE(?OptContainerPrefLabel,?OptContainerTitle,"") AS ?ContainerLabel)
   BIND(REPLACE(?EscapedSearchTerm, "\\\\", "") AS ?SearchTermRaw)

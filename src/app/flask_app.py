@@ -59,6 +59,9 @@ def process_metadata():
     restrict_to_themes = request.args.get("Restrict to Themes")
     if restrict_to_themes:
         restrict_to_themes = restrict_to_themes.split(",")
+    
+    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
+
 
     if analysis_methods != ["netcdf"]:
         data = request.json
@@ -82,6 +85,7 @@ def process_metadata():
                     xml,
                     restrict_to_themes,
                     "XML",
+                    exclude_deprecated=exclude_deprecated,
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
@@ -100,6 +104,7 @@ def process_metadata():
                     doc_data,
                     restrict_to_themes,
                     "NETCDF",
+                    exclude_deprecated=exclude_deprecated,
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
