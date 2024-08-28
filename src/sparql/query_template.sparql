@@ -55,7 +55,7 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
     COALESCE(?isDeprecated, "false") = "false", "Accepted", "Deprecated"
     ) AS ?Status
   )
-  {% if not include_deprecated %}
+  {% if exclude_deprecated %}
       FILTER(?Status = "Accepted") .
   {% endif %}
   BIND(COALESCE(?OptContainer,"") AS ?Container)
