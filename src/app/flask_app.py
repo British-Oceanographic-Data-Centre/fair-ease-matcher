@@ -59,6 +59,12 @@ def process_metadata():
     restrict_to_themes = request.args.get("Restrict to Themes")
     if restrict_to_themes:
         restrict_to_themes = restrict_to_themes.split(",")
+
+    match_properties = request.args.get("Match Properties")
+    if match_properties:
+        match_properties = match_properties.split(",")
+    
+    logger.info(f"match_properties = {match_properties} hello!")
     
     exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
 

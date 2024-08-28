@@ -11,9 +11,10 @@
       "source": "geoDABterms"
     }
   },
-  "Restrict to Themes": {
-    "param": "Parameter",
-    "inst": "Instrument",
-    "plat": "Platform"
+  "Match Properties": {
+    "id": "Identifier",
+    "pref": "Pref label",
+    "alt": "Alt label",
+    "def": "Definition"
   }
 }
