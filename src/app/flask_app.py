@@ -62,9 +62,6 @@ def process_metadata():
     
     exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
 
-    #exclude_deprecated = True
-    # Print the value of exclude_deprecated to the console
-    print(f"exclude_deprecated: {exclude_deprecated}")
 
     if analysis_methods != ["netcdf"]:
         data = request.json

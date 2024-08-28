@@ -45,7 +45,7 @@ themes_map = {
 }
 
 
-def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated):        
+def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False):        
     types_to_text = extract_full_xml(xml_string)            
     mapping = {"all": [("uris", None)]}
     collected_t2t = collect_types(types_to_text)                
@@ -87,7 +87,7 @@ def collect_types(types_to_text: dict):
     return result
 
 
-def analyse_from_netcdf(file_bytes, exclude_deprecated, restrict_to_themes=None):
+def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes=None):
     # Use the memory argument to read from file_bytes
     rootgrp = Dataset(filename=None, mode="r", memory=file_bytes, format="NETCDF3")
     # try get URNs
