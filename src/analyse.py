@@ -223,7 +223,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
         ],
     }    
     
-    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs)    
+    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)    
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)                                    
     all_bindings, head = run_all_queries(all_queries)            
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
@@ -246,7 +246,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
                     mapping_tuples[i] = (metadata_type, proximity_preds)
 
     proximity_query_args = get_query_args(
-        all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs
+        all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs
     )
     proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=False, proximity=True)
     if proximity_queries:
@@ -537,7 +537,7 @@ def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, restrict_t
     results[doc_name] = {}     
     results[doc_name][
         app.config["Methods"]["terms"]["source"]
-    ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs)
+    ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)
     
 def run_methods(
         doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False
