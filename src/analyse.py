@@ -199,7 +199,7 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
-def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:                
+def analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs = None) -> dict:                
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
     restrict_to_theme = map_geodab_meta_to_sparql_meta(restrict_to_theme)
@@ -223,7 +223,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:
         ],
     }    
     
-    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme)    
+    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs)    
     all_queries = generate_queries(query_args)                                    
     all_bindings, head = run_all_queries(all_queries)            
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
@@ -246,7 +246,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme) -> dict:
                     mapping_tuples[i] = (metadata_type, proximity_preds)
 
     proximity_query_args = get_query_args(
-        all_metadata_elems, mapping, restrict_to_theme
+        all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs
     )
     proximity_queries = generate_queries(proximity_query_args, proximity=True)
     if proximity_queries:
@@ -370,7 +370,7 @@ def generate_queries(query_args, proximity=False):
     return all_queries
 
 
-def get_query_args(all_metadata_elems, mapping, theme_names=None):
+def get_query_args(all_metadata_elems, mapping, theme_names=None, restrict_to_vocabs = None):
     """vocabs: the vocabularies the query should be restricted to"""
     query_args = {
         f"{prefix}_{key}": {
@@ -386,6 +386,10 @@ def get_query_args(all_metadata_elems, mapping, theme_names=None):
             query_args[prefix_key]["theme_uris"] = [
                 themes_map[theme_name] for theme_name in theme_names
             ]
+
+    if restrict_to_vocabs:
+        for prefix_key in query_args:
+            query_args[prefix_key]["allowed_vocabs"] = restrict_to_vocabs
     
     return query_args
         
@@ -464,7 +468,7 @@ def flatten_results(json_doc, method):
     return new_head, new_bindings
 
 
-def create_query(predicate, terms, query_type, theme_uris=None, proximity=False):
+def create_query(predicate, terms, query_type, theme_uris=None, proximity=False, allowed_vocabs = []):
     queries = []
     if "uri" in query_type:
         template = Template(Path("src/sparql/uri_query_template.sparql").read_text())
@@ -476,7 +480,8 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False)
     # Render the template with the necessary parameters
 
     query = template.render(
-        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris
+        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris,
+        allowed_vocabs=[f"<{x}>" for x in allowed_vocabs]
     )  # template imported at module level.
     queries.append(query)        
     return queries
@@ -528,11 +533,11 @@ def extract_from_all(root):
     merged = merge_dicts(all_dicts)    
     return merged
 
-def run_method_dab_terms(doc_name, results, terms, restrict_to_theme):
+def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, restrict_to_vocabs = None):
     results[doc_name] = {}     
     results[doc_name][
         app.config["Methods"]["terms"]["source"]
-    ] = analyse_from_geodab_terms(terms, restrict_to_theme)
+    ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs)
     
 def run_methods(
         doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type

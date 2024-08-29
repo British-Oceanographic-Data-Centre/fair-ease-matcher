@@ -7,8 +7,10 @@ import traceback
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
+from httpx import AsyncClient
 
 from src.analyse import run_methods, run_method_dab_terms
+from src.sparql_queries import send_query
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +30,7 @@ def process_metadata_geodab():
     data = request.json
     restrict_to_theme = data['metadata']
     terms = data['terms']
+    vocabs = data['vocabs']
     responses = {}
     doc_name = 'geoDabTerms'
     
@@ -36,7 +39,8 @@ def process_metadata_geodab():
             doc_name,
             responses,     
             terms,
-            restrict_to_theme
+            restrict_to_theme,
+            restrict_to_vocabs=vocabs
         )
     except Exception as e:
         # Handle exceptions and send a 500 response
@@ -115,6 +119,24 @@ def available_methods():
     response = jsonify(config)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
+
+@app.route("/vocab-list", methods=["GET"])
+async def get_vocab_list():
+    category = request.args.get("category")
+    query = """
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+    SELECT distinct ?a where {{
+        graph <https://themes> {{ ?a ?b ?c . }}
+        ?c skos:prefLabel ?p .
+        filter regex(str(?p), "{0}") .
+    }} limit 100
+    """
+    async_client = AsyncClient()
+    response = await send_query(query.format(category), mediatype="application/json", client=async_client)
+    await response.aread()
+    return response.json()
 
 
 if __name__ == "__main__":
