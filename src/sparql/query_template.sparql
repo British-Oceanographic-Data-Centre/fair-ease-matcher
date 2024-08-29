@@ -15,11 +15,25 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
     {%- endfor %}
   }
 
-  {%- if not predicate %}
+  {%- if not match_properties %}
     {% set predicate = "skos:definition skos:prefLabel dcterms:description skos:altLabel dcterms:identifier rdfs:label" %}
   {%- else %}
-    {% set predicate = predicate %}
+    {% set selected_predicates = [] %}
+    {% if 'alt' in match_properties %}
+        {% set selected_predicates = selected_predicates + ['skos:altLabel'] %}
+    {% endif %}
+    {% if 'pref' in match_properties %}
+        {% set selected_predicates = selected_predicates + ['skos:prefLabel'] + ['rdfs:label'] %}
+    {% endif %}
+    {% if 'def' in match_properties %}
+        {% set selected_predicates = selected_predicates + ['skos:definition'] + ['dcterms:description'] %}
+    {% endif %}
+    {% if 'id' in match_properties %}
+        {% set selected_predicates = selected_predicates + ['dcterms:identifier'] %}
+    {% endif %}
+    {% set predicate = selected_predicates|join(' ') %}
   {%- endif %}
+
   (?MatchURI ?Weight ?MatchTerm ?graph ?MatchProp) text:query ({{ predicate }} ?EscapedSearchTerm 5 ) .
     GRAPH ?g {?MatchURI ?p ?o}
     {%- if theme_uris %}

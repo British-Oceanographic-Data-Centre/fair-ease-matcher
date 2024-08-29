@@ -91,7 +91,7 @@ def process_metadata():
                     xml,
                     restrict_to_themes,
                     "XML",
-                    exclude_deprecated=exclude_deprecated,
+                    exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
@@ -110,7 +110,7 @@ def process_metadata():
                     doc_data,
                     restrict_to_themes,
                     "NETCDF",
-                    exclude_deprecated=exclude_deprecated,
+                    exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
