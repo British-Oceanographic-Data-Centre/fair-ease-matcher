@@ -23,15 +23,16 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
         {% set selected_predicates = selected_predicates + ['skos:altLabel'] %}
     {% endif %}
     {% if 'pref' in match_properties %}
-        {% set selected_predicates = selected_predicates + ['skos:prefLabel'] + ['rdfs:label'] %}
+        {% set selected_predicates = selected_predicates + ['skos:prefLabel', 'rdfs:label'] %}
     {% endif %}
     {% if 'def' in match_properties %}
-        {% set selected_predicates = selected_predicates + ['skos:definition'] + ['dcterms:description'] %}
+        {% set selected_predicates = selected_predicates + ['skos:definition', 'dcterms:description'] %}
     {% endif %}
     {% if 'id' in match_properties %}
         {% set selected_predicates = selected_predicates + ['dcterms:identifier'] %}
     {% endif %}
-    {% set predicate = selected_predicates|join(' ') %}
+    {% set predicate = selected_predicates | join(' ') %}
+
   {%- endif %}
 
   (?MatchURI ?Weight ?MatchTerm ?graph ?MatchProp) text:query ({{ predicate }} ?EscapedSearchTerm 5 ) .
@@ -50,9 +51,9 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
     {%- endif %}
   OPTIONAL {
     ?MatchURI skos:prefLabel|rdfs:label|dcterms:title|sdo:name ?match_label .
-    ?MatchProp skos:prefLabel|rdfs:label|dcterms:title|sdo:name ?prop_label .
     FILTER(LANGMATCHES(LANG(?prop_label), "en") || LANG(?prop_label) = "")
   }
+
   OPTIONAL {
     ?OptContainer skos:member ?MatchURI ;
                   skos:prefLabel ?OptContainerPrefLabel ;

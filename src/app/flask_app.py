@@ -64,7 +64,7 @@ def process_metadata():
     if match_properties:
         match_properties = match_properties.split(",")
     
-    logger.info(f"match_properties = {match_properties} hello!")
+    
     
     exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
 
