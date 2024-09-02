@@ -37,6 +37,9 @@ SELECT DISTINCT ?SearchTerm ?MatchURI (SAMPLE(?MatchPropertyAll) AS ?MatchProper
 
   (?MatchURI ?Weight ?MatchTerm ?graph ?MatchProp) text:query ({{ predicate }} ?EscapedSearchTerm 5 ) .
     GRAPH ?g {?MatchURI ?p ?o}
+    {% if allowed_vocabs and allowed_vocabs|length > 0 %}
+      FILTER(?g in ({{allowed_vocabs|join(', ')}}))
+    {% endif %}
     {%- if theme_uris %}
       VALUES ?theme_uri {
     {%- for theme_uri in theme_uris -%}<{{theme_uri}}>{%- endfor %}
