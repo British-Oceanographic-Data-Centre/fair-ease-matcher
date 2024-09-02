@@ -45,13 +45,16 @@ themes_map = {
 }
 
 
-def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False):        
+def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False,match_properties=None):        
     types_to_text = extract_full_xml(xml_string)            
     mapping = {"all": [("uris", None)]}
     collected_t2t = collect_types(types_to_text)                
     query_args = get_query_args(collected_t2t, mapping, restrict_to_themes)            
-    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)
+    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     all_bindings, head = run_all_queries(all_queries)
+
+    # Map MatchProperty URIs to readable labels
+    all_bindings = map_match_property_to_label(all_bindings)
 
     _all_search_terms = [list(i.values()) for i in collected_t2t.values()]
     all_search_terms = set(
@@ -87,7 +90,7 @@ def collect_types(types_to_text: dict):
     return result
 
 
-def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes=None):
+def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes=None, match_properties=None):
     # Use the memory argument to read from file_bytes
     rootgrp = Dataset(filename=None, mode="r", memory=file_bytes, format="NETCDF3")
     # try get URNs
@@ -151,8 +154,11 @@ def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes
     }
 
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
-    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)
+    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     all_bindings, head = run_all_queries(all_queries)
+
+    # Map MatchProperty URIs to readable labels
+    all_bindings = map_match_property_to_label(all_bindings)
 
     _all_search_terms = [list(i.values()) for i in all_metadata_elems.values()]
     all_search_terms = set(
@@ -199,6 +205,7 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
+
 def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None) -> dict:                
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
@@ -223,8 +230,10 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
         ],
     }    
     
+
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)    
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)                                    
+
     all_bindings, head = run_all_queries(all_queries)            
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
     
@@ -248,10 +257,12 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     proximity_query_args = get_query_args(
         all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs
     )
-    proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=False, proximity=True)
+    proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=False, proximity=True, match_properties=None)
     if proximity_queries:
         proximity_bindings, _ = run_all_queries(proximity_queries)
         all_bindings.extend(proximity_bindings)
+        # Map MatchProperty URIs to readable labels
+        all_bindings = map_match_property_to_label(all_bindings)
 
     _all_search_terms = [list(i.values()) for i in all_metadata_elems.values()]
     all_search_terms = set(
@@ -269,7 +280,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     
     return results
 
-def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False) -> dict:
+def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False, match_properties=None) -> dict:
     root = ET.fromstring(xml)
     logger.info("Obtained root from remote XML.")
     
@@ -299,8 +310,10 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     }
     
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
-    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)            
-    all_bindings, head = run_all_queries(all_queries)        
+    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)            
+    all_bindings, head = run_all_queries(all_queries)
+    # Map MatchProperty URIs to readable labels
+    all_bindings = map_match_property_to_label(all_bindings)        
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
         
     remove_uri_matches_from_other_matches(all_bindings)
@@ -323,10 +336,12 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     proximity_query_args = get_query_args(
         all_metadata_elems, mapping, restrict_to_themes
     )
-    proximity_queries = generate_queries(proximity_query_args, proximity=True, exclude_deprecated=exclude_deprecated)
+    proximity_queries = generate_queries(proximity_query_args, proximity=True, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     if proximity_queries:
         proximity_bindings, _ = run_all_queries(proximity_queries)
         all_bindings.extend(proximity_bindings)
+        # Map MatchProperty URIs to readable labels
+        all_bindings = map_match_property_to_label(all_bindings)
 
     _all_search_terms = [list(i.values()) for i in all_metadata_elems.values()]
     all_search_terms = set(
@@ -356,7 +371,7 @@ def run_all_queries(all_queries):
     return all_bindings, head
 
 
-def generate_queries(query_args, proximity=False, exclude_deprecated=False):            
+def generate_queries(query_args, proximity=False, exclude_deprecated=False, match_properties=None):            
     all_queries = []
     for query_type, kwargs in query_args.items():
         if kwargs["terms"]:
@@ -364,7 +379,7 @@ def generate_queries(query_args, proximity=False, exclude_deprecated=False):
                 pass  # don't need proximity search on
             else:
                 queries = create_query(
-                    **kwargs, query_type=query_type, proximity=proximity, exclude_deprecated=exclude_deprecated
+                    **kwargs, query_type=query_type, proximity=proximity, exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )                
                 all_queries.extend([(query_type, query) for query in queries])                                
     return all_queries
@@ -394,33 +409,60 @@ def get_query_args(all_metadata_elems, mapping, theme_names=None, restrict_to_vo
     return query_args
         
 def remove_uri_matches_from_other_matches(all_bindings):
-    """If a search term matches a URI, remove it from the other matches"""
-    uri_match_uris = [result["MatchURI"]["value"] for result in all_bindings if
-                      result["MethodSubType"]["value"] == "URI Match"]
+    """If a search term matches a URI, remove it from the other matches."""
+    # Collect URIs that have a MethodSubType of 'URI Match'
+    uri_match_uris = [
+        result["MatchURI"]["value"]
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") == "URI Match"
+    ]
 
-    to_remove = [result for result in all_bindings if
-                 result["MatchURI"]["value"] in uri_match_uris and
-                 result["MethodSubType"]["value"] != "URI Match"]
-    logger.info(msg=f"Deduplicating {len(to_remove)} matches where the URI has already been exactly matched.")
+    # Rebuild the list, excluding non-URI matches found in the collected URIs
+    all_bindings[:] = [
+        result
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") == "URI Match"
+        or result["MatchURI"]["value"] not in uri_match_uris
+    ]
 
-    # Then, rebuild the list excluding the non-URI matches not found in the collected URIs
-    all_bindings[:] = [result for result in all_bindings if
-                       result["MethodSubType"]["value"] == "URI Match" or
-                       result["MatchURI"]["value"] not in uri_match_uris]
 
 
 def remove_exact_and_uri_matches(all_bindings, all_metadata_elems):
-    for result in all_bindings:
-        if result["MethodSubType"]["value"] in ["Exact Match"]:
-            target_element = result["TargetElement"]["value"]
-            for search_type, search_list in all_metadata_elems[target_element].items():
-                search_term = result["SearchTerm"]["value"]
-                if search_term in search_list:
-                    all_metadata_elems[target_element][search_type].remove(search_term)
+    """Remove exact and URI matches from the results."""
+    exact_matches_uris = [
+        result["MatchURI"]["value"]
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") == "Exact Match"
+    ]
+
+
+
+    # Rebuild the list excluding the exact matches and URI matches that should be removed
+    all_bindings[:] = [
+        result
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") == "Exact Match"
+        or result["MatchURI"]["value"] not in exact_matches_uris
+    ]
+
+    uri_matches = [
+        result["MatchURI"]["value"]
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") == "URI Match"
+    ]
+
+
+    all_bindings[:] = [
+        result
+        for result in all_bindings
+        if result.get("MethodSubType", {}).get("value") in ["Exact Match", "URI Match"]
+        or result["MatchURI"]["value"] not in uri_matches
+    ]
+
 
 
 async def run_queries(queries):
-    async with AsyncClient(auth=(user, passwd) if user else None, timeout=280) as client:
+    async with AsyncClient(auth=(user, passwd) if user else None, timeout=30) as client:
         return await asyncio.gather(
             *[
                 tabular_query_to_dict(query, query_type, client)
@@ -468,7 +510,8 @@ def flatten_results(json_doc, method):
     return new_head, new_bindings
 
 
-def create_query(predicate, terms, query_type, theme_uris=None, proximity=False, exclude_deprecated=False, allowed_vocabs = []):
+
+def create_query(predicate, terms, query_type, theme_uris=None, proximity=False, exclude_deprecated=False, allowed_vocabs = [], match_properties=None):
     queries = []
     if "uri" in query_type:
         template = Template(Path("src/sparql/uri_query_template.sparql").read_text())
@@ -481,7 +524,7 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False,
 
     query = template.render(
         predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,
-        allowed_vocabs=[f"<{x}>" for x in allowed_vocabs]
+        allowed_vocabs=[f"<{x}>" for x in allowed_vocabs], match_properties=match_properties
     )  # template imported at module level.
     queries.append(query)        
     return queries
@@ -540,7 +583,7 @@ def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, restrict_t
     ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)
     
 def run_methods(
-        doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False
+        doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False, match_properties=None
 ):
     results[doc_name] = {}
     if method_type == "XML":  # run specified xml methods
@@ -549,16 +592,16 @@ def run_methods(
                 results[doc_name][
                     app.config["Methods"]["metadata"][method]
                 ] = analyse_from_xml_structure(
-                    xml_string, threshold, restrict_to_themes, exclude_deprecated=exclude_deprecated
+                    xml_string, threshold, restrict_to_themes, exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )
             elif method == "full":
                 results[doc_name][
                     app.config["Methods"]["metadata"][method]
-                ] = analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated)
+                ] = analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     if method_type == "NETCDF":  # run netCDF methods - currently just the one
         results[doc_name][
             app.config["Methods"]["netcdf"]["netcdf"]
-        ] = analyse_from_netcdf(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated)
+        ] = analyse_from_netcdf(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
 
 def extract_urns_from_netcdf(rootgrp: Dataset, var_name: str):
     var_urns = []
@@ -576,3 +619,20 @@ def extract_text_from_net_cdf(rootgrp: Dataset, var_name: str):
         if text_or_none:
             var_text.append(text_or_none)
     return var_text
+
+def map_match_property_to_label(bindings): # A function to map the match property URIs to the readable labels
+    PROP_LABEL_MAP = {
+    "http://www.w3.org/2004/02/skos/core#prefLabel": "Preferred Label",
+    "http://www.w3.org/2000/01/rdf-schema#label": "Preferred Label",
+    "http://purl.org/dc/terms/title": "Preferred Label",
+    "https://schema.org/name": "Preferred Label",
+    "http://www.w3.org/2004/02/skos/core#altLabel": "Alternate Label",
+    "http://www.w3.org/2004/02/skos/core#definition": "Definition",
+    "http://purl.org/dc/terms/description": "Definition",
+    "http://purl.org/dc/terms/identifier": "Identifier",
+    }
+    for binding in bindings:
+        match_property_uri = binding.get("MatchProperty", {}).get("value")
+        if match_property_uri in PROP_LABEL_MAP:
+            binding["MatchProperty"]["value"] = PROP_LABEL_MAP[match_property_uri]
+    return bindings
