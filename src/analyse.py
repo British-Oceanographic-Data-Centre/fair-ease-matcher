@@ -623,12 +623,12 @@ def extract_text_from_net_cdf(rootgrp: Dataset, var_name: str):
 def map_match_property_to_label(bindings): # A function to map the match property URIs to the readable labels
     PROP_LABEL_MAP = {
     "http://www.w3.org/2004/02/skos/core#prefLabel": "Preferred Label",
-    "http://www.w3.org/2000/01/rdf-schema#label": "Label",
-    "http://purl.org/dc/terms/title": "Title",
-    "https://schema.org/name": "Name",
+    "http://www.w3.org/2000/01/rdf-schema#label": "Preferred Label",
+    "http://purl.org/dc/terms/title": "Preferred Label",
+    "https://schema.org/name": "Preferred Label",
     "http://www.w3.org/2004/02/skos/core#altLabel": "Alternate Label",
     "http://www.w3.org/2004/02/skos/core#definition": "Definition",
-    "http://purl.org/dc/terms/description": "Description",
+    "http://purl.org/dc/terms/description": "Definition",
     "http://purl.org/dc/terms/identifier": "Identifier",
     }
     for binding in bindings:
