@@ -206,7 +206,7 @@ def get_terms_elements(terms, restrict_to_theme):
     return all_terms_elements
 
 
-def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None, match_properties=None) -> dict:                
+def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None) -> dict:                
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
     restrict_to_theme = map_geodab_meta_to_sparql_meta(restrict_to_theme)
@@ -231,7 +231,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     }    
     
 
-    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs, match_properties=match_properties)    
+    query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)    
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)                                    
 
     all_bindings, head = run_all_queries(all_queries)            
