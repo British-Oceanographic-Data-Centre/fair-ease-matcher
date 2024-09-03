@@ -138,10 +138,13 @@ async def get_vocab_list():
     query = """
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 
-    SELECT distinct ?a where {{
-        graph <https://themes> {{ ?a ?b ?c . }}
+    SELECT distinct ?collection ?title where {{
+        graph <https://themes> {{ ?collection ?b ?c . }}
         ?c skos:prefLabel ?p .
         filter regex(str(?p), "{0}") .
+        OPTIONAL {{
+            ?collection skos:prefLabel ?title
+        }}
     }} limit 100
     """
     async_client = AsyncClient()
