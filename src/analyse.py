@@ -3,6 +3,8 @@ import itertools
 import logging
 import os
 import re
+from typing import List
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -44,12 +46,11 @@ themes_map = {
     "inst": URIRef("http://vocab.nerc.ac.uk/collection/L19/current/SDNKG01/"),
 }
 
-
-def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False):        
-    types_to_text = extract_full_xml(xml_string)            
+def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False):
+    types_to_text = extract_full_xml(xml_string)
     mapping = {"all": [("uris", None)]}
-    collected_t2t = collect_types(types_to_text)                
-    query_args = get_query_args(collected_t2t, mapping, restrict_to_themes)            
+    collected_t2t = collect_types(types_to_text)
+    query_args = get_query_args(collected_t2t, mapping, restrict_to_themes)
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)
     all_bindings, head = run_all_queries(all_queries)
 
@@ -67,13 +68,19 @@ def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = F
         "search_terms_not_found": search_terms_not_found,
         "stats": {"found": len(search_terms_found), "total": len(all_search_terms)},
     }
-    return results
+
+    # Collect the URI matches to pass to the structured XML analysis to avoid further analysis
+    uri_matches: List[str] = []
+    for binding in all_bindings:
+        if binding["Method"]["value"] == "URI Match":
+            uri_matches.append(binding["MatchURI"]["value"])
+    return results, uri_matches
 
 
 def collect_types(types_to_text: dict):
     # Using a dictionary to group texts by their guessed_type
     result_dict = {"uris": [], "strings": [], "identifiers": []}
-            
+
     for item in types_to_text:
         guessed_type = item["guessed_type"]
         if guessed_type == "uris":
@@ -199,7 +206,7 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
-def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None) -> dict:                
+def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None) -> dict:
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
     restrict_to_theme = map_geodab_meta_to_sparql_meta(restrict_to_theme)
@@ -269,13 +276,17 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     
     return results
 
-def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False) -> dict:
+def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False, uri_matches=None) -> dict:
     root = ET.fromstring(xml)
     logger.info("Obtained root from remote XML.")
-    
     all_metadata_elems = extract_from_all(root)
     logger.info(f"Info extracted:\n{dict(all_metadata_elems)}".replace("}, '", "},\n'"))
-    
+
+    # Prevent URI matches from being analysed again if they were previously matched
+    if uri_matches:
+        for key in all_metadata_elems.keys():
+            all_metadata_elems[key]['uris'] = [uri for uri in all_metadata_elems[key]['uris'] if uri not in uri_matches]
+
     # tuple 1: config for text search
     # tuple 2: for identifiers (only search in dcterms:identifier predicate)
     # tuple 3: config for uri search
@@ -297,14 +308,14 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
             ("uris", None),
         ],
     }
-    
+
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
-    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)            
-    all_bindings, head = run_all_queries(all_queries)        
+    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)
+    all_bindings, head = run_all_queries(all_queries)
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
-        
+
     remove_uri_matches_from_other_matches(all_bindings)
-    remove_exact_and_uri_matches(all_bindings, all_metadata_elems)    
+    remove_exact_and_uri_matches(all_bindings, all_metadata_elems)
 
     # If there are no Exact or URI matches for a metadata element, also run a proximity search on those metadata elements
     proximity_preds = "skos:prefLabel dcterms:description skos:altLabel dcterms:identifier rdfs:label"  # https://github.com/Kurrawong/fair-ease-matcher/issues/37
@@ -341,6 +352,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
         "search_terms_not_found": search_terms_not_found,
         "stats": {"found": len(search_terms_found), "total": len(all_search_terms)},
     }
+
     return results
 
 
@@ -348,7 +360,7 @@ def run_all_queries(all_queries):
     all_bindings = []
     head = {}
     all_results = asyncio.run(run_queries(all_queries))
-    
+
     for query_type, result in all_results:
         head, bindings = flatten_results(result, query_type)
         all_bindings.extend(bindings)
@@ -380,7 +392,7 @@ def get_query_args(all_metadata_elems, mapping, theme_names=None, restrict_to_vo
         for prefix, configs in mapping.items()
         for (key, predicate) in configs
     }
-                    
+
     if theme_names:
         for prefix_key in query_args:
             query_args[prefix_key]["theme_uris"] = [
@@ -530,35 +542,43 @@ def extract_from_all(root):
     all_dicts.append(extract_from_topic_categories(root))
     all_dicts.append(extract_from_content_info(root))
     all_dicts.append(extract_instruments_platforms_from_acquisition_info(root))
-    merged = merge_dicts(all_dicts)    
+    merged = merge_dicts(all_dicts)
     return merged
 
 def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, restrict_to_vocabs = None):
-    results[doc_name] = {}     
+    results[doc_name] = {}   
     results[doc_name][
         app.config["Methods"]["terms"]["source"]
     ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)
-    
+
 def run_methods(
         doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False
 ):
     results[doc_name] = {}
     if method_type == "XML":  # run specified xml methods
-        for method in methods:
-            if method == "xml":
-                results[doc_name][
-                    app.config["Methods"]["metadata"][method]
-                ] = analyse_from_xml_structure(
-                    xml_string, threshold, restrict_to_themes, exclude_deprecated=exclude_deprecated
-                )
-            elif method == "full":
-                results[doc_name][
-                    app.config["Methods"]["metadata"][method]
-                ] = analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated)
+        uri_matches = None
+        if "full" in methods:
+            full_results, uri_matches = analyse_from_full_xml(
+                xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated
+            )
+            results[doc_name][
+                    app.config["Methods"]["metadata"]["full"]
+                ] = full_results
+        if "xml" in methods:
+            results[doc_name][
+                app.config["Methods"]["metadata"]["xml"]
+            ] = analyse_from_xml_structure(
+                xml_string,
+                threshold,
+                restrict_to_themes,
+                exclude_deprecated=exclude_deprecated,
+                uri_matches=uri_matches
+            )
+
     if method_type == "NETCDF":  # run netCDF methods - currently just the one
         results[doc_name][
             app.config["Methods"]["netcdf"]["netcdf"]
-        ] = analyse_from_netcdf(xml_string, restrict_to_themes, exclude_deprecated=exclude_deprecated)
+        ] = analyse_from_netcdf(xml_string, restrict_to_themes=restrict_to_themes, exclude_deprecated=exclude_deprecated)
 
 def extract_urns_from_netcdf(rootgrp: Dataset, var_name: str):
     var_urns = []
