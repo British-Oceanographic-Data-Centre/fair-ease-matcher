@@ -64,7 +64,7 @@ def process_metadata():
     if restrict_to_themes:
         restrict_to_themes = restrict_to_themes.split(",")
 
-    match_properties = request.args.get("Match Properties")
+    match_properties = request.args.get("match_props")
     if match_properties:
         match_properties = match_properties.split(",")
     

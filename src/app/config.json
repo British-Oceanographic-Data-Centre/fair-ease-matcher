@@ -11,10 +11,22 @@
       "source": "geoDABterms"
     }
   },
-  "Match Properties": {
-    "id": "Identifier",
-    "pref": "Pref label",
-    "alt": "Alt label",
-    "def": "Definition"
+  "match_props": {
+    "id": {
+      "label": "Identifier",
+      "order": 1
+    },
+    "pref": {
+      "label": "Preflabel",
+      "order": 2
+    },
+    "alt": {
+      "label": "Altlabel",
+      "order": 3
+    },
+    "def": {
+      "label": "Definition",
+      "order": 4
+    }
   }
 }
