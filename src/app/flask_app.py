@@ -68,8 +68,11 @@ def process_metadata():
     if restrict_to_themes:
         restrict_to_themes = restrict_to_themes.split(",")
 
-    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
+    match_properties = request.args.get("Match Properties")
+    if match_properties:
+        match_properties = match_properties.split(",")
 
+    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
 
     if analysis_methods != ["netcdf"]:
         data = request.json
@@ -93,7 +96,7 @@ def process_metadata():
                     xml,
                     restrict_to_themes,
                     "XML",
-                    exclude_deprecated=exclude_deprecated,
+                    exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
@@ -112,7 +115,7 @@ def process_metadata():
                     doc_data,
                     restrict_to_themes,
                     "NETCDF",
-                    exclude_deprecated=exclude_deprecated,
+                    exclude_deprecated=exclude_deprecated, match_properties=match_properties
                 )
             except Exception as e:
                 # Handle exceptions and send a 500 response
@@ -136,10 +139,13 @@ async def get_vocab_list():
     query = """
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 
-    SELECT distinct ?a where {{
-        graph <https://themes> {{ ?a ?b ?c . }}
+    SELECT distinct ?collection ?title where {{
+        graph <https://themes> {{ ?collection ?b ?c . }}
         ?c skos:prefLabel ?p .
         filter regex(str(?p), "{0}") .
+        OPTIONAL {{
+            ?collection skos:prefLabel ?title
+        }}
     }} limit 100
     """
     async_client = AsyncClient()
