@@ -37,7 +37,7 @@ def process_metadata_geodab():
     if match_properties:
         match_properties = match_properties.split(",")
     
-    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
+    exclude_deprecated = request.args.get("exclude_deprecated", "false").lower() == "true"
     
     try:
         run_method_dab_terms(
@@ -77,7 +77,7 @@ def process_metadata():
     
     
     
-    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
+    exclude_deprecated = request.args.get("exclude_deprecated", "false").lower() == "true"
 
 
     if analysis_methods != ["netcdf"]:
