@@ -213,7 +213,8 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
-def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None) -> dict:
+def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None, match_properties=None) -> dict:                
+  
     terms_clean = [el.replace('"', "\'") for el in terms]
     all_metadata_elems = get_terms_elements(terms_clean, restrict_to_theme)                
     restrict_to_theme = map_geodab_meta_to_sparql_meta(restrict_to_theme)
@@ -239,7 +240,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     
 
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)    
-    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated)                                    
+    all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)                                    
 
     all_bindings, head = run_all_queries(all_queries)            
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
@@ -264,7 +265,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     proximity_query_args = get_query_args(
         all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs
     )
-    proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=False, proximity=True, match_properties=None)
+    proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=exclude_deprecated, proximity=True, match_properties=match_properties)
     if proximity_queries:
         proximity_bindings, _ = run_all_queries(proximity_queries)
         all_bindings.extend(proximity_bindings)
@@ -588,12 +589,13 @@ def extract_from_all(root):
     merged = merge_dicts(all_dicts)
     return merged
 
-def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, restrict_to_vocabs = None):
-    results[doc_name] = {}   
+
+def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, exclude_deprecated = False, restrict_to_vocabs = None, match_properties=None):
+    results[doc_name] = {}     
     results[doc_name][
         app.config["Methods"]["terms"]["source"]
-    ] = analyse_from_geodab_terms(terms, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)
-
+    ] = analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=exclude_deprecated, restrict_to_vocabs=restrict_to_vocabs, match_properties=match_properties)
+    
 def run_methods(
         doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False, match_properties=None
 ):
