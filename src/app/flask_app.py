@@ -33,6 +33,11 @@ def process_metadata_geodab():
     vocabs = data['vocabs']
     responses = {}
     doc_name = 'geoDabTerms'
+    match_properties = request.args.get("match_props")
+    if match_properties:
+        match_properties = match_properties.split(",")
+    
+    exclude_deprecated = request.args.get("excludeDeprecated", "false").lower() == "true"
     
     try:
         run_method_dab_terms(
@@ -40,7 +45,9 @@ def process_metadata_geodab():
             responses,     
             terms,
             restrict_to_theme,
-            restrict_to_vocabs=vocabs
+            exclude_deprecated=exclude_deprecated,
+            restrict_to_vocabs=vocabs,
+            match_properties=match_properties
         )
     except Exception as e:
         # Handle exceptions and send a 500 response
