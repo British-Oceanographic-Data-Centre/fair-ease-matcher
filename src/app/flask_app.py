@@ -15,7 +15,11 @@ from src.sparql_queries import send_query
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-config = json.load(open(Path(__file__).parent / "config.json"))
+
+config = None
+with open(Path(__file__).parent / "config.json", "r", encoding="utf-8") as file:
+    config = json.load(file)
+
 app = Flask(__name__)
 for k, v in config.items():
     app.config[k] = v
@@ -74,11 +78,8 @@ def process_metadata():
     match_properties = request.args.get("match_props")
     if match_properties:
         match_properties = match_properties.split(",")
-    
-    
-    
-    exclude_deprecated = request.args.get("exclude_deprecated", "false").lower() == "true"
 
+    exclude_deprecated = request.args.get("exclude_deprecated", "false").lower() == "true"
 
     if analysis_methods != ["netcdf"]:
         data = request.json
@@ -133,7 +134,7 @@ def process_metadata():
     return response
 
 @app.route("/config", methods=["GET"])
-def available_methods():    
+def get_config():
     response = jsonify(config)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response

@@ -2,7 +2,7 @@
   "Methods": {
     "metadata": {
       "xml": "Structured XML Extraction",
-      "full": "Full XML Extraction"
+      "full": "URL Extraction"
     },
     "netcdf": {
       "netcdf": "netCDF"
