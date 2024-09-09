@@ -48,27 +48,33 @@ themes_map = {
 
 
 def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False, match_properties=None):        
-    types_to_text = extract_full_xml(xml_string)
+    types_to_text_original, types_to_text_with_variants = extract_full_xml(xml_string)
     mapping = {"all": [("uris", None)]}
-    collected_t2t = collect_types(types_to_text)
-    query_args = get_query_args(collected_t2t, mapping, restrict_to_themes)
+    collected_t2t_with_variants = collect_types(types_to_text_with_variants)
+    query_args = get_query_args(collected_t2t_with_variants, mapping, restrict_to_themes)
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     all_bindings, head = run_all_queries(all_queries)
+
+    # {'guessed_type': 'uris', 'text': 'http://www.isotc211.org/2005/gmi'}
+
+    original_set = set([orig['text'] for orig in types_to_text_original if [orig['guessed_type'] == 'uris']])
+    variant_set = set([orig['text'] for orig in types_to_text_with_variants if [orig['guessed_type'] == 'uris']])
+
+    variants = variant_set - original_set
 
     # Map MatchProperty URIs to readable labels
     all_bindings = map_match_property_to_label(all_bindings)
 
-    _all_search_terms = [list(i.values()) for i in collected_t2t.values()]
-    all_search_terms = set(
-        itertools.chain.from_iterable(itertools.chain.from_iterable(_all_search_terms))
-    )
+    all_search_terms = (set(query_args['all_uris']['terms']) - variants) #-
+
+
     search_terms_found = set(d["SearchTerm"]["value"] for d in all_bindings)
     search_terms_not_found = list(all_search_terms - search_terms_found)
 
     results = {
         "head": head,
         "results": {"bindings": all_bindings},
-        "all_search_elements": collected_t2t,
+        "all_search_elements": collected_t2t_with_variants,
         "search_terms_not_found": search_terms_not_found,
         "stats": {"found": len(search_terms_found), "total": len(all_search_terms)},
     }

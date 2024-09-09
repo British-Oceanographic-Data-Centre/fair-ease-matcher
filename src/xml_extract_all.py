@@ -37,8 +37,9 @@ def extract_full_xml(xml_string):
             trailing_slash_variant = get_trailing_slash_variant(gt2t["text"])
             if trailing_slash_variant:
                 variants.append({"guessed_type": "uris", "text": trailing_slash_variant})
-    types_to_text.extend(variants)
-    return types_to_text
+    extended = list(types_to_text)
+    extended.extend(variants)
+    return types_to_text, extended
 
 
 def extract_data(element):
