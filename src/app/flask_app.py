@@ -161,5 +161,17 @@ async def get_vocab_list():
     return response.json()
 
 
+@app.route("/matchproperties", methods=["GET"])
+async def get_match_properties():
+    """Return all possible match properties from the knowledge base."""
+   # Query to get match properties.
+    query = ('select distinct ?b where { graph <http://vocab.nerc.ac.uk/collection/R22/current/> '
+    '{?a ?b ?c . filter (contains(str(?b), "skos") || contains(str(?b), "identifier") )} } limit 100')
+    async_client = AsyncClient()
+    response = await send_query(query, mediatype="application/json", client=async_client)
+    await response.aread()
+    return response.json()
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8004)
