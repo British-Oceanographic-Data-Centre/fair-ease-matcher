@@ -161,5 +161,54 @@ async def get_vocab_list():
     return response.json()
 
 
+def get_match_properties_ld(sparql_json: dict):
+    """Return json-ld form of match properties.
+    
+    Args:
+        sparql_json (dict): Match properties json response directly from the sparql endpoint.
+    Returns:
+        dict: Formatted json-ld. 
+    """
+    property_urls = [ binding['b']['value'] for binding in sparql_json['results']['bindings']]    
+    
+    properties_ld = []
+    for url in property_urls:
+        split_url = url.split("/")
+        name = split_url[-1] if '#' not in split_url[-1] else split_url[-1].split('#')[-1]
+        defined_set = url.replace(name, '')
+        properties_ld.append({
+                        "@type": "DefinedTerm",
+                        "name": name,
+                        "inDefinedTermSet": defined_set,
+                        "url": url,
+                        "termCode": name
+                    })
+    
+    return {
+        "@context": {
+            "@vocab": "https://schema.org/"
+        },
+        "@graph": [
+            {
+                "query": "matchProperties",
+                "@type": "SearchAction",
+                "result": properties_ld
+            }
+        ]
+    }
+
+
+@app.route("/matchproperties", methods=["GET"])
+async def get_match_properties():
+    """Return all possible match properties from the knowledge base."""
+   # Query to get match properties.
+    query = ('select distinct ?b where { graph <http://vocab.nerc.ac.uk/collection/R22/current/> '
+    '{?a ?b ?c . filter (contains(str(?b), "skos") || contains(str(?b), "identifier") )} } limit 100')
+    async_client = AsyncClient()
+    response = await send_query(query, mediatype="application/json", client=async_client)
+    await response.aread()
+    return get_match_properties_ld(response.json())
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8004)
