@@ -162,7 +162,13 @@ async def get_vocab_list():
 
 
 def get_match_properties_ld(sparql_json: dict):
-    """Return json-ld form of match properties."""
+    """Return json-ld form of match properties.
+    
+    Args:
+        sparql_json (dict): Match properties json response directly from the sparql endpoint.
+    Returns:
+        dict: Formatted json-ld. 
+    """
     property_urls = [ binding['b']['value'] for binding in sparql_json['results']['bindings']]    
     
     properties_ld = []
