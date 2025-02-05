@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import traceback
 
@@ -27,6 +28,36 @@ for k, v in config.items():
 
 # Allow requests from your UI
 CORS(app)
+
+def parse_categories(data: dict) -> dict:
+    """Parse the categories JSON into the correct format."""
+    new_data = {"@context": {
+    "@vocab": "https://schema.org/"
+
+    },
+    "@graph": [
+        {
+            "query": "categories",
+            "@type": "SearchAction",
+            "result": [
+            ]
+
+            }
+        ]
+    }
+    for result in (data["results"]["bindings"]):
+        raw_url = urlparse(result["c"]["value"])
+        term_code = raw_url.path.strip("/").split("/")[-1]
+        in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{"/".join(raw_url.path.strip("/").split("/")[:-1])}/"
+        item =  {
+            "@type": "DefinedTerm",
+            "name": result["prefLabel"]["value"].lower(),
+            "inDefinedTermSet": in_defined_term_set,
+            "url": result["c"]["value"],
+            "termCode" :term_code
+            }
+        new_data["@graph"][0]["result"].append(item)
+    return new_data
 
 @app.route("/process-geodab-terms", methods=["POST"])
 def process_metadata_geodab():
@@ -159,6 +190,18 @@ async def get_vocab_list():
     response = await send_query(query.format(category), mediatype="application/json", client=async_client)
     await response.aread()
     return response.json()
+
+@app.route("/categories", methods=["GET"])
+async def get_categories():  
+    query = """
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    select distinct ?c ?prefLabel ?l where { graph <https://themes> {?a <http://www.w3.org/ns/dcat#theme> ?c .
+        ?c <http://www.w3.org/2000/01/rdf-schema#label>  ?prefLabel
+    } } limit 100"""
+    async_client = AsyncClient()
+    response = await send_query(query, mediatype="application/json", client=async_client)
+    await response.aread()
+    return parse_categories(response.json())
 
 
 if __name__ == "__main__":
