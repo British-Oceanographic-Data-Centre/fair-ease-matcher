@@ -203,8 +203,10 @@ def get_match_properties_ld(sparql_json: dict):
 async def get_match_properties():
     """Return all possible match properties from the knowledge base."""
    # Query to get match properties.
-    query = ('select distinct ?b where { graph <http://vocab.nerc.ac.uk/collection/R22/current/> '
-    '{?a ?b ?c . filter (contains(str(?b), "skos") || contains(str(?b), "identifier") )} } limit 100')
+    query = ('select distinct ?b where { <http://vocab.nerc.ac.uk/collection/R22/current/FLOAT_COASTAL/> ?b ?c . '
+             'FILTER (CONTAINS(str(?b), "prefLabel") || CONTAINS(str(?b),"altLabel") ||  '
+             'CONTAINS(str(?b),"/terms/identifier") ||  CONTAINS(str(?b),"definition")) }'
+            )
     async_client = AsyncClient()
     response = await send_query(query, mediatype="application/json", client=async_client)
     await response.aread()
