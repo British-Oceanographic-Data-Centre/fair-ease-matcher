@@ -48,7 +48,7 @@ def parse_categories(data: dict) -> dict:
     for result in (data["results"]["bindings"]):
         raw_url = urlparse(result["c"]["value"])
         term_code = raw_url.path.strip("/").split("/")[-1]
-        in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{"/".join(raw_url.path.strip("/").split("/")[:-1])}/"
+        in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{'/'.join(raw_url.path.strip('/').split('/')[:-1])}/"
         item =  {
             "@type": "DefinedTerm",
             "name": result["prefLabel"]["value"].lower(),
