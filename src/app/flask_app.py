@@ -50,6 +50,7 @@ def parse_categories(data: dict) -> dict:
         term_code = raw_url.path.strip("/").split("/")[-1]
         in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{'/'.join(raw_url.path.strip('/').split('/')[:-1])}/"
         item =  {
+            "@id": result["c"]["value"],
             "@type": "DefinedTerm",
             "name": result["prefLabel"]["value"].lower(),
             "inDefinedTermSet": in_defined_term_set,
