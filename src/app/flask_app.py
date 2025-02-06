@@ -177,6 +177,7 @@ def get_match_properties_ld(sparql_json: dict):
         name = split_url[-1] if '#' not in split_url[-1] else split_url[-1].split('#')[-1]
         defined_set = url.replace(name, '')
         properties_ld.append({
+                        "@id": url,
                         "@type": "DefinedTerm",
                         "name": name,
                         "inDefinedTermSet": defined_set,
