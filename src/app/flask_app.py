@@ -258,7 +258,7 @@ async def get_match_properties():
 
 @app.route("/matchType", methods=["get"])
 async def get_match_types():
-    """Return all ppssible match types."""
+    """Return all possible match types."""
     return {
     "@context": "https://schema.org",
     "@type": "ItemList",
