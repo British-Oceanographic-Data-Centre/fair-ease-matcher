@@ -256,6 +256,20 @@ async def get_match_properties():
     await response.aread()
     return get_match_properties_ld(response.json())
 
+@app.route("/matchType", methods=["get"])
+async def get_match_types():
+    """Return all ppssible match types."""
+    return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": [
+        "exactMatch",
+        "proximityMatch",
+        "wildcardMatch"
+    ],
+    "name": "SA matches"
+    }
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8004)
