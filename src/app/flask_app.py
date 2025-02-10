@@ -11,7 +11,7 @@ from flask_cors import CORS
 from httpx import AsyncClient
 
 from src.analyse import run_methods, run_method_dab_terms
-from src.sparql_queries import send_query
+from src.sparql_queries import get_vocabs_from_sparql_endpoint, send_query
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +28,225 @@ for k, v in config.items():
 
 # Allow requests from your UI
 CORS(app)
+
+# Map requested match properties to equivalent geodab
+# See api/matchproperties
+match_properties_map = {
+    'identifier': 'id',
+    'prefLabel': 'pref',
+    'altLabel': 'alt',
+    'definition': 'def'
+}
+
+# Map requested categories to equivalent geodab
+# See /api/categories
+categories_map = {
+    'parameter': 'parameter',
+    'platform': 'platform',
+    'instrument': 'instrument',
+    'theme': 'keyword',
+    'all': ''
+}
+
+# Map results match type to equivalent geodab
+# See /api/matchType
+match_type_map = {
+    'exactMatch': 'Exact Match',
+    'wildcardMatch': 'Wildcard Match',
+    'proximityMatch': 'Proximity Match',    
+}
+
+
+@app.route("/analyse", methods=["POST"])
+def get_analysis_results():
+    """Analyses terms. Based on the endpoint /process-geodab-terms but simplifies the
+    structure of the json response.
+    
+    Fields in json payload of request:
+    
+    {
+        "category" [optional]               Restricted values: see ~/api/categories 
+                                            Cardinality      : 0:1
+                                            Default value    : "" 
+                           
+        "vocabularies" [optional]           Cardinality      : 0:Many  
+                                            Default value    : []
+        
+        "terms":                            Cardinality      : 1:Many
+        
+        "exclude_deprecated": [optional]    Cardinality      : 0
+                                            Default value    : "false"
+        
+        "match_type": [optional]            Restricted values: see ~/api/matchType
+                                            Cardinality      : 0:Many
+                                            Default value    : "exactMatch"
+                
+        "match_properties": [optional]      Restricted values: see ~/api/matchproperties
+                                            Cardinality      : 0:Many
+                                            Default value    : ["altLabel", "definition", "preflabel", "identifier"]                
+    }
+    
+    example:
+    
+    data = {
+            "category": "parameter",            
+            "terms": ["SALINITY", "AMETEK", "Base current of pH sensor"],              
+            "match_type": ['exactMatch','proximityMatch'],            
+            "match_properties": ["altLabel", "definition"]
+    }
+     
+    """
+    #
+    # Verify we have some json
+    #
+    sa_data = request.get_json(silent=True) or {}
+
+    if not sa_data:
+        return make_response("Error JSON: No data provided", 400)
+
+    #
+    # category json field
+    #
+    category = sa_data.get("category", "all")
+
+    if category not in categories_map:
+        return make_response(f"Error JSON value: Invalid '{category}' category", 400)
+
+    category = categories_map[category]
+    
+    #
+    # vocabularies json field
+    #
+    vocabularies = [] if sa_data.get("vocabularies") is None else sa_data["vocabularies"]
+    
+    #
+    # terms json field
+    #
+    if not sa_data.get("terms"):
+        return make_response(f"Error JSON value: {'No terms provided'}", 400)
+
+    max_terms = config["max_terms_limit"]
+    terms = sa_data["terms"]
+    if len(terms) > max_terms:
+        return make_response(f"Error JSON value: {'Number of terms cannot exceed'} {max_terms}", 400)
+
+    #
+    # match_type json field
+    #
+    match_type_required = (
+        ["exactMatch"]
+        if sa_data.get('match_type') is None
+        else sa_data["match_type"]
+    )    
+    if not match_type_required:
+        match_type_required = ["Exact Match"]
+    else:
+        match_type_required = [
+            match_type_map.get(item) 
+            for item in match_type_required 
+                if item in match_type_map
+        ]
+        if not match_type_required:
+            return make_response(f"Error JSON value: {'Invalid match type'}", 400)
+
+    #
+    # exclude deprecated json field
+    #    
+    exclude_deprecated = "true" if sa_data.get("exclude_deprecated") else "false"
+    
+    #
+    # match properties json field
+    #
+    match_properties = (
+        list(match_properties_map.keys())
+        if sa_data.get('match_properties') is None
+        else sa_data["match_properties"]
+    )
+    if not match_properties:
+        match_properties = list(match_properties_map.values())
+    else:
+        match_properties = [
+            match_properties_map.get(item)
+            for item in match_properties
+                if item in match_properties_map
+        ]
+        if not match_properties:
+            return make_response(f"Error JSON value: {'Invalid match property'}", 400)    
+
+    responses = {}
+    try:
+        run_method_dab_terms(
+            "SAterms",
+            responses,
+            terms,
+            category,
+            exclude_deprecated=exclude_deprecated,
+            restrict_to_vocabs=vocabularies,
+            match_properties=match_properties
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return make_response(f"Exception from Python: {str(e)}", 500)
+    
+    response = jsonify(responses)
+    json_data = response.json
+        
+    # Extract the results bindings
+    bindings = json_data["SAterms"]["geoDABterms"]["results"]["bindings"]
+
+    # Create the simplified json response structure
+    results = {
+        "@context": [
+        "https://schema.org/",
+        {
+            "skos": "http://www.w3.org/2004/02/skos/core#"
+        }
+        ],
+        "@graph": []
+    }
+
+    for item in bindings:                            
+        matching_type = item.get('MethodSubType', {}).get('value')
+
+        if matching_type not in match_type_required:
+            continue
+
+        url = item['MatchURI']['value']                                
+        parsed_url = urlparse(url)
+        path_parts = parsed_url.path.strip("/").split("/")
+        term_code = path_parts[-1]
+
+        matching_type = item['MethodSubType']['value'].replace(" ","")
+
+        if "vocab.nerc.ac.uk" in parsed_url.netloc:
+            in_defined_term_set = f"{parsed_url.scheme}://{parsed_url.netloc}/{'/'.join(path_parts[:-1])}/"
+        else:
+            sparql_query = f"""select distinct ?g where {{graph ?g {{<{url}> ?b ?n .}} }} limit 100"""
+            vocabjson = get_vocabs_from_sparql_endpoint(sparql_query)
+            in_defined_term_set = vocabjson["results"]["bindings"][0]["g"]["value"]
+
+        graph_item = {
+            "query": item['SearchTerm']['value'],            
+            "@type": "SearchAction",
+            "result": [
+                {
+                  "@type": ["DefinedTerm", "skos:Concept","CreativeWork" ],
+                  "@id": url,
+                  "name": item['MatchTerm']['value'],
+                  "additionalType": item['Categories']['value'],
+                  "inDefinedTermSet": in_defined_term_set,
+                  "url": url,
+                  "termCode": term_code,
+                  "skos:deprecated": "false" if item["Status"]["value"] in "Accepted" else "true",
+                  "matchingType": matching_type
+                }                
+            ]
+        }
+
+        results["@graph"].append(graph_item)
+
+    return results
+
 
 def parse_categories(data: dict) -> dict:
     """Parse the categories JSON into the correct format."""
