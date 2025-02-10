@@ -48,8 +48,9 @@ def parse_categories(data: dict) -> dict:
     for result in (data["results"]["bindings"]):
         raw_url = urlparse(result["c"]["value"])
         term_code = raw_url.path.strip("/").split("/")[-1]
-        in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{"/".join(raw_url.path.strip("/").split("/")[:-1])}/"
+        in_defined_term_set = f"{raw_url.scheme}://{raw_url.netloc}/{'/'.join(raw_url.path.strip('/').split('/')[:-1])}/"
         item =  {
+            "@id": result["c"]["value"],
             "@type": "DefinedTerm",
             "name": result["prefLabel"]["value"].lower(),
             "inDefinedTermSet": in_defined_term_set,
@@ -220,6 +221,7 @@ def get_match_properties_ld(sparql_json: dict):
         name = split_url[-1] if '#' not in split_url[-1] else split_url[-1].split('#')[-1]
         defined_set = url.replace(name, '')
         properties_ld.append({
+                        "@id": url,
                         "@type": "DefinedTerm",
                         "name": name,
                         "inDefinedTermSet": defined_set,
@@ -245,12 +247,28 @@ def get_match_properties_ld(sparql_json: dict):
 async def get_match_properties():
     """Return all possible match properties from the knowledge base."""
    # Query to get match properties.
-    query = ('select distinct ?b where { graph <http://vocab.nerc.ac.uk/collection/R22/current/> '
-    '{?a ?b ?c . filter (contains(str(?b), "skos") || contains(str(?b), "identifier") )} } limit 100')
+    query = ('select distinct ?b where { <http://vocab.nerc.ac.uk/collection/R22/current/FLOAT_COASTAL/> ?b ?c . '
+             'FILTER (CONTAINS(str(?b), "prefLabel") || CONTAINS(str(?b),"altLabel") ||  '
+             'CONTAINS(str(?b),"/terms/identifier") ||  CONTAINS(str(?b),"definition")) }'
+            )
     async_client = AsyncClient()
     response = await send_query(query, mediatype="application/json", client=async_client)
     await response.aread()
     return get_match_properties_ld(response.json())
+
+@app.route("/matchType", methods=["get"])
+async def get_match_types():
+    """Return all possible match types."""
+    return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": [
+        "exactMatch",
+        "proximityMatch",
+        "wildcardMatch"
+    ],
+    "name": "SA matches"
+    }
 
 
 if __name__ == "__main__":
