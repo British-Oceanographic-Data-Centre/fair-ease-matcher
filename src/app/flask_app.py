@@ -271,5 +271,66 @@ async def get_match_types():
     }
 
 
+
+def populate_json_template(category_name: str, json_results: dict) -> dict:
+    """Use the template to properly format the results."""
+    json_template = {
+    "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "skos": "http://www.w3.org/2004/02/skos/core#"
+    },
+    "@graph": [
+        {
+        "query": f"/categories/{category_name}/vocabularies",
+        "@type": "SearchAction",
+        "result": []
+            }
+            ]
+    }
+    for res in json_results["results"]["bindings"]:
+        result = {
+        "@type": "DefinedTermSet",
+        "@id":  res["collection"]["value"],
+        "name": res["title"].get("value", "") if "title" in res else "",
+        "about": res["about"]["value"]
+    }
+        json_template["@graph"][0]["result"].append(result)
+    
+    return json_template
+
+
+@app.route("/categories/<categoryName>/vocabularies", methods=["GET"])
+async def get_vocabs_by_category(categoryName):
+    """Return vocabularies by Category."""
+    async_client = AsyncClient()
+    if categoryName == "all":
+       query = f"""
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#> 
+            SELECT DISTINCT ?collection ?title ?about WHERE {{ 
+                GRAPH <https://themes> {{ ?collection ?b ?c . }} 
+                ?c skos:prefLabel ?about . 
+                OPTIONAL {{ ?collection skos:prefLabel ?title }} 
+            }}
+            """
+    else:
+       query = f"""
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#> 
+            SELECT DISTINCT ?collection ?title ?about WHERE {{ 
+                GRAPH <https://themes> {{ ?collection ?b ?c . }} 
+                ?c skos:prefLabel ?about . 
+                FILTER(REGEX(STR(?about), "{categoryName}", "i")) 
+                OPTIONAL {{ ?collection skos:prefLabel ?title }} 
+            }}  
+        """
+    response = await send_query(query, mediatype="application/json", client=async_client)
+    await response.aread()
+    return populate_json_template(categoryName, response.json())
+
+
+
+    
+
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8004)
