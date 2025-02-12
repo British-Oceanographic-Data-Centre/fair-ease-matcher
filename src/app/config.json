@@ -28,5 +28,6 @@
       "label": "Definition",
       "order": 4
     }
-  }
+  },
+  "max_terms_limit": 300
 }
