@@ -292,11 +292,12 @@ def populate_json_template(category_name: str, json_results: dict) -> dict:
         "@type": "DefinedTermSet",
         "@id":  res["collection"]["value"],
         "name": res["title"].get("value", "") if "title" in res else "",
-        "about": res["about"]["value"]
+        "about": res["aboutList"]["value"]
     }
         json_template["@graph"][0]["result"].append(result)
     
     return json_template
+
 
 
 @app.route("/categories/<categoryName>/vocabularies", methods=["GET"])
@@ -304,24 +305,49 @@ async def get_vocabs_by_category(categoryName):
     """Return vocabularies by Category."""
     async_client = AsyncClient()
     if categoryName == "all":
-       query = f"""
-            PREFIX skos: <http://www.w3.org/2004/02/skos/core#> 
-            SELECT DISTINCT ?collection ?title ?about WHERE {{ 
-                GRAPH <https://themes> {{ ?collection ?b ?c . }} 
-                ?c skos:prefLabel ?about . 
-                OPTIONAL {{ ?collection skos:prefLabel ?title }} 
-            }}
-            """
+        query = f"""
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX dc: <http://purl.org/dc/elements/1.1/>
+                PREFIX dct: <http://purl.org/dc/terms/>
+                PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+                SELECT  ?collection ?title (GROUP_CONCAT(DISTINCT ?about; SEPARATOR=", ") AS ?aboutList) WHERE 
+                {{
+                    {{ GRAPH <https://themes> {{ ?collection ?b ?c . }} }}
+                    UNION 
+                    {{ GRAPH <https://w3id.org/semanticanalyser/system-graph> {{ 
+                        ?collection a <https://w3id.org/semanticanalyser/Vocabulary> .
+                        ?collection ?b ?c .
+                    }} }}
+                    ?c skos:prefLabel ?about .
+                    OPTIONAL {{ ?collection skos:prefLabel ?title }}
+                    OPTIONAL {{ ?collection dc:title ?title }}
+                    OPTIONAL {{ ?collection rdfs:label ?title }}
+                }} 
+                GROUP BY ?collection ?title
+                """
     else:
-       query = f"""
-            PREFIX skos: <http://www.w3.org/2004/02/skos/core#> 
-            SELECT DISTINCT ?collection ?title ?about WHERE {{ 
-                GRAPH <https://themes> {{ ?collection ?b ?c . }} 
-                ?c skos:prefLabel ?about . 
-                FILTER(REGEX(STR(?about), "{categoryName}", "i")) 
-                OPTIONAL {{ ?collection skos:prefLabel ?title }} 
-            }}  
+        query = f"""
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX dc: <http://purl.org/dc/elements/1.1/>
+        PREFIX dct: <http://purl.org/dc/terms/>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        SELECT  ?collection ?title (GROUP_CONCAT(DISTINCT ?about; SEPARATOR=", ") AS ?aboutList) WHERE 
+        {{
+            {{ GRAPH <https://themes> {{ ?collection ?b ?c . }} }}
+            UNION 
+            {{ GRAPH <https://w3id.org/semanticanalyser/system-graph> {{ 
+                ?collection a <https://w3id.org/semanticanalyser/Vocabulary> .
+                ?collection ?b ?c .
+            }} }}
+            ?c skos:prefLabel ?about .
+            FILTER REGEX(STR(?about), '{categoryName}', "i") .
+            OPTIONAL {{ ?collection skos:prefLabel ?title }}
+            OPTIONAL {{ ?collection dc:title ?title }}
+            OPTIONAL {{ ?collection rdfs:label ?title }}
+        }} 
+        GROUP BY ?collection ?title
         """
+
     response = await send_query(query, mediatype="application/json", client=async_client)
     await response.aread()
     return populate_json_template(categoryName, response.json())
