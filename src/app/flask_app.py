@@ -297,7 +297,7 @@ def populate_json_template(category_name: str, json_results: dict) -> dict:
         json_template["@graph"][0]["result"].append(result)
     
     return json_template
-oo
+
 
 
 @app.route("/categories/<categoryName>/vocabularies", methods=["GET"])
