@@ -153,9 +153,9 @@ def get_analysis_results():
 
     #
     # exclude deprecated json field
-    #    
-    exclude_deprecated = True if sa_data.get("exclude_deprecated") else False
-    
+    #
+    exclude_deprecated = str(sa_data.get("exclude_deprecated", "false")).lower() == "true"
+
     #
     # matchProperties json field
     #
