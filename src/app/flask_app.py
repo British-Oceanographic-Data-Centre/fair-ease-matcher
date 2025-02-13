@@ -154,7 +154,7 @@ def get_analysis_results():
     #
     # exclude deprecated json field
     #    
-    exclude_deprecated = "true" if sa_data.get("exclude_deprecated") else "false"
+    exclude_deprecated = True if sa_data.get("exclude_deprecated") else False
     
     #
     # matchProperties json field
@@ -195,7 +195,7 @@ def get_analysis_results():
         
     # Extract the results bindings
     bindings = json_data["SAterms"]["geoDABterms"]["results"]["bindings"]
-
+    
     # Create the simplified json response structure
     results = {
         "@context": [
