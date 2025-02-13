@@ -79,23 +79,23 @@ def get_analysis_results():
         "exclude_deprecated": [optional]    Cardinality      : 0
                                             Default value    : "false"
         
-        "match_type": [optional]            Restricted values: see ~/api/matchType
+        "matchType": [optional]            Restricted values: see ~/api/matchType
                                             Cardinality      : 0:Many
-                                            Default value    : "exactMatch"
+                                            Default value    : ["exactMatch"]
                 
-        "match_properties": [optional]      Restricted values: see ~/api/matchproperties
+        "matchProperties": [optional]       Restricted values: see ~/api/matchproperties
                                             Cardinality      : 0:Many
                                             Default value    : ["altLabel", "definition", "preflabel", "identifier"]                
     }
     
     example:
     
-    data = {
+        {
             "category": "parameter",            
             "terms": ["SALINITY", "AMETEK", "Base current of pH sensor"],              
-            "match_type": ['exactMatch','proximityMatch'],            
-            "match_properties": ["altLabel", "definition"]
-    }
+            "matchType": ['exactMatch','proximityMatch'],            
+            "matchProperties": ["altLabel", "definition"]
+        }
      
     """
     #
@@ -133,12 +133,12 @@ def get_analysis_results():
         return make_response(f"Error JSON value: {'Number of terms cannot exceed'} {max_terms}", 400)
 
     #
-    # match_type json field
+    # matchType json field
     #
     match_type_required = (
         ["exactMatch"]
-        if sa_data.get('match_type') is None
-        else sa_data["match_type"]
+        if sa_data.get('matchType') is None
+        else sa_data["matchType"]
     )    
     if not match_type_required:
         match_type_required = ["Exact Match"]
@@ -157,12 +157,12 @@ def get_analysis_results():
     exclude_deprecated = "true" if sa_data.get("exclude_deprecated") else "false"
     
     #
-    # match properties json field
+    # matchProperties json field
     #
     match_properties = (
         list(match_properties_map.keys())
-        if sa_data.get('match_properties') is None
-        else sa_data["match_properties"]
+        if sa_data.get('matchProperties') is None
+        else sa_data["matchProperties"]
     )
     if not match_properties:
         match_properties = list(match_properties_map.values())
