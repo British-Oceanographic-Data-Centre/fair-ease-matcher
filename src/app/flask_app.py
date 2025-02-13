@@ -102,7 +102,7 @@ def get_analysis_results():
     sa_data = request.get_json(silent=True) or {}
 
     if not sa_data:
-        return make_response("Error JSON: No data provided", 400)
+        return make_response("Error JSON: No data provided or invalid JSON", 400)
 
     #
     # category json field
@@ -233,7 +233,7 @@ def get_analysis_results():
                   "@type": ["DefinedTerm", "skos:Concept","CreativeWork" ],
                   "@id": url,
                   "name": item['MatchTerm']['value'],
-                  "additionalType": item['Categories']['value'],
+                  "additionalType": "" if not item.get('Categories') else item['Categories']['value'],
                   "inDefinedTermSet": in_defined_term_set,
                   "url": url,
                   "termCode": term_code,
