@@ -10,6 +10,8 @@ from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from httpx import AsyncClient
 
+from collections import defaultdict
+
 from src.analyse import run_methods, run_method_dab_terms
 from src.sparql_queries import get_vocabs_from_sparql_endpoint, send_query
 
@@ -211,7 +213,8 @@ def get_analysis_results():
         if matching_type not in match_type_required:
             continue
 
-        url = item['MatchURI']['value']                                
+        query = item['SearchTerm']['value']
+        url = item['MatchURI']['value']
         parsed_url = urlparse(url)
         path_parts = parsed_url.path.strip("/").split("/")
         term_code = path_parts[-1]
@@ -226,7 +229,7 @@ def get_analysis_results():
             in_defined_term_set = vocabjson["results"]["bindings"][0]["g"]["value"]
 
         graph_item = {
-            "query": item['SearchTerm']['value'],            
+            "query": query,            
             "@type": "SearchAction",
             "result": [
                 {
@@ -239,13 +242,28 @@ def get_analysis_results():
                   "termCode": term_code,
                   "skos:deprecated": "false" if item["Status"]["value"] in "Accepted" else "true",
                   "matchingType": matching_type
-                }                
+                }
             ]
         }
 
         results["@graph"].append(graph_item)
 
-    return results
+        # Restructure the json by grouping results by query field
+        grouped_results = defaultdict(list)
+
+        for item in results["@graph"]:
+            query = item["query"]
+            grouped_results[query].extend(item["result"])
+
+        grouped_json = {
+            "@context": results["@context"],
+            "@graph": [
+                {"@type": "SearchAction", "query": query, "result": results}
+                for query, results in grouped_results.items()
+        ]
+    }
+        
+    return grouped_json
 
 
 def parse_categories(data: dict) -> dict:
