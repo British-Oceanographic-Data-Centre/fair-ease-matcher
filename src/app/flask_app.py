@@ -241,7 +241,7 @@ def get_analysis_results():
                   "url": url,
                   "termCode": term_code,
                   "skos:deprecated": "false" if item["Status"]["value"] in "Accepted" else "true",
-                  "matchingType": matching_type
+                  "matchType": matching_type
                 }
             ]
         }
