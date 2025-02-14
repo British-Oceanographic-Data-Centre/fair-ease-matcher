@@ -222,6 +222,8 @@ def get_analysis_results():
 
         category = category.strip()
         
+        category = "Theme" if category == "keyword" else category
+
         if not (not category or category.lower() in add_list):
             continue
         
