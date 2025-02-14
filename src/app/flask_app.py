@@ -119,8 +119,11 @@ def get_analysis_results():
     #
     # vocabularies json field
     #
-    vocabularies = [] if sa_data.get("vocabularies") is None else sa_data["vocabularies"]
-    
+    vocabularies = sa_data.get("vocabularies", [])
+
+    if not isinstance(vocabularies, list):
+        return make_response("Error JSON value: vocabularies should be an array list", 400)    
+
     #
     # terms json field
     #
@@ -221,7 +224,6 @@ def get_analysis_results():
         category = category.strip()
         
         if not (not category or category.lower() in add_list):
-            print("category is not in additional type. Skip")
             continue
         
         match_property = item['MatchProperty']['value']
