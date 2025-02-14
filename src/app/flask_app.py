@@ -110,12 +110,12 @@ def get_analysis_results():
     # category json field
     #
     category = sa_data.get("category", "all")
-
+    
     if category not in categories_map:
         return make_response(f"Error JSON value: Invalid '{category}' category", 400)
 
     category = categories_map[category]
-    
+        
     #
     # vocabularies json field
     #
@@ -207,13 +207,26 @@ def get_analysis_results():
         "@graph": []
     }
 
+    grouped_json = {}
+
     for item in bindings:                            
         matching_type = item.get('MethodSubType', {}).get('value')
 
         if matching_type not in match_type_required:
             continue
 
-        query = item['SearchTerm']['value']
+        additional_type = "" if not item.get('Categories') else item['Categories']['value']
+        add_list = [x.strip().lower() for x in additional_type.split(',')]
+
+        category = category.strip()
+        
+        if not (not category or category.lower() in add_list):
+            print("category is not in additional type. Skip")
+            continue
+        
+        match_property = item['MatchProperty']['value']
+        
+        query = item['SearchTerm']['value']        
         url = item['MatchURI']['value']
         parsed_url = urlparse(url)
         path_parts = parsed_url.path.strip("/").split("/")
@@ -236,35 +249,38 @@ def get_analysis_results():
                   "@type": ["DefinedTerm", "skos:Concept","CreativeWork" ],
                   "@id": url,
                   "name": item['MatchTerm']['value'],
-                  "additionalType": "" if not item.get('Categories') else item['Categories']['value'],
+                  "additionalType": additional_type,
                   "inDefinedTermSet": in_defined_term_set,
                   "url": url,
                   "termCode": term_code,
                   "skos:deprecated": "false" if item["Status"]["value"] in "Accepted" else "true",
                   "matchType": matching_type,
-                  "matchProperty": item['MatchProperty']['value']                  
+                  "matchProperty": match_property
                 }
             ]
         }
 
         results["@graph"].append(graph_item)
 
-        # Restructure the json by grouping results by query field
-        grouped_results = defaultdict(list)
+    # Restructure the json by grouping results by query field
+    grouped_results = defaultdict(list)
 
-        for item in results["@graph"]:
-            query = item["query"]
-            grouped_results[query].extend(item["result"])
+    for item in results["@graph"]:
+        query = item["query"]
+        grouped_results[query].extend(item["result"])
 
-        grouped_json = {
-            "@context": results["@context"],
-            "@graph": [
-                {"@type": "SearchAction", "query": query, "result": results}
-                for query, results in grouped_results.items()
+    grouped_json = {
+        "@context": results["@context"],
+        "@graph": [
+            {"@type": "SearchAction", "query": query, "result": results}
+            for query, results in grouped_results.items()
         ]
     }
-        
-    return grouped_json
+
+    if len(bindings) > 0:
+        return grouped_json
+
+    return results
 
 
 def parse_categories(data: dict) -> dict:
