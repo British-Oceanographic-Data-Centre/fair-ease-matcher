@@ -121,8 +121,7 @@ def get_analysis_results():
     #
     vocabularies = sa_data.get("vocabularies", [])    
     if not isinstance(vocabularies, list):
-        return "Error JSON value: Error JSON value: vocabularies should be an array list!!!", 400
-        # return make_response("Error JSON value: vocabularies should be an array list", 400)
+        return make_response("Error JSON value: vocabularies should be an array list", 400)
 
     #
     # terms json field
