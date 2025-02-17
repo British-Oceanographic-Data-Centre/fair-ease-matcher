@@ -111,6 +111,10 @@ def get_analysis_results():
     #
     category = sa_data.get("category", "all")
     
+    if isinstance(category, list):
+        return make_response("Error JSON value: category should be a string not array", 400)
+        
+    
     if category not in categories_map:
         return make_response(f"Error JSON value: Invalid '{category}' category", 400)
 
@@ -119,7 +123,7 @@ def get_analysis_results():
     #
     # vocabularies json field
     #
-    vocabularies = sa_data.get("vocabularies", [])    
+    vocabularies = sa_data.get("vocabularies", [])
     if not isinstance(vocabularies, list):
         return make_response("Error JSON value: vocabularies should be an array list", 400)
 
@@ -198,6 +202,8 @@ def get_analysis_results():
     # Extract the results bindings
     bindings = json_data["SAterms"]["geoDABterms"]["results"]["bindings"]
     
+    terms_not_found = json_data["SAterms"]["geoDABterms"]["search_terms_not_found"]
+
     # Create the simplified json response structure
     results = {
         "@context": [
@@ -209,9 +215,11 @@ def get_analysis_results():
         "@graph": []
     }
 
-    grouped_json = {}
+    grouped_json = {}    
+    stats = { "total_number_terms_found": 0 }
+    match_count = 0
 
-    for item in bindings:                            
+    for item in bindings:            
         matching_type = item.get('MethodSubType', {}).get('value')
 
         if matching_type not in match_type_required:
@@ -226,6 +234,8 @@ def get_analysis_results():
 
         if not (not category or category.lower() in add_list):
             continue
+        
+        match_count = match_count + 1
         
         match_property = item['MatchProperty']['value']
         
@@ -263,7 +273,9 @@ def get_analysis_results():
             ]
         }
 
-        results["@graph"].append(graph_item)
+        stats = { "total_number_terms_found": match_count }
+
+        results["@graph"].append(graph_item)     
 
     # Restructure the json by grouping results by query field
     grouped_results = defaultdict(list)
@@ -280,8 +292,14 @@ def get_analysis_results():
         ]
     }
 
+    grouped_json["stats"] = stats
+    grouped_json["search_terms_not_found"] = terms_not_found
+
     if len(bindings) > 0:
         return grouped_json
+
+    results["stats"] = stats
+    results["search_terms_not_found"] = terms_not_found
 
     return results
 
