@@ -104,35 +104,39 @@ def get_analysis_results():
     sa_data = request.get_json(silent=True) or {}
 
     if not sa_data:
-        return make_response("Error JSON: No data provided or invalid JSON", 400)
+        return make_response("Error JSON: No data provided or invalid JSON", 200)
 
     #
     # category json field
     #
     category = sa_data.get("category", "all")
     
+    if isinstance(category, list):
+        return make_response("Error JSON: category should be a string not array", 200)
+        
+    
     if category not in categories_map:
-        return make_response(f"Error JSON value: Invalid '{category}' category", 400)
+        return make_response(f"Error JSON: Invalid '{category}' category", 200)
 
     category = categories_map[category]
         
     #
     # vocabularies json field
     #
-    vocabularies = sa_data.get("vocabularies", [])    
+    vocabularies = sa_data.get("vocabularies", [])
     if not isinstance(vocabularies, list):
-        return make_response("Error JSON value: vocabularies should be an array list", 400)
+        return make_response("Error JSON: vocabularies should be an array list", 200)
 
     #
     # terms json field
     #
     if not sa_data.get("terms"):
-        return make_response(f"Error JSON value: {'No terms provided'}", 400)
+        return make_response(f"Error JSON: {'No terms provided'}", 200)
 
     max_terms = config["max_terms_limit"]
     terms = sa_data["terms"]
     if len(terms) > max_terms:
-        return make_response(f"Error JSON value: {'Number of terms cannot exceed'} {max_terms}", 400)
+        return make_response(f"Error JSON: {'Number of terms cannot exceed'} {max_terms}", 200)
 
     #
     # matchType json field
@@ -151,7 +155,7 @@ def get_analysis_results():
                 if item in match_type_map
         ]
         if not match_type_required:
-            return make_response(f"Error JSON value: {'Invalid match type'}", 400)
+            return make_response(f"Error JSON: {'Invalid match type'}", 200)
 
     #
     # exclude deprecated json field
@@ -175,7 +179,7 @@ def get_analysis_results():
                 if item in match_properties_map
         ]
         if not match_properties:
-            return make_response(f"Error JSON value: {'Invalid match property'}", 400)    
+            return make_response(f"Error JSON: {'Invalid match property'}", 200)
 
     responses = {}
     try:
@@ -198,6 +202,8 @@ def get_analysis_results():
     # Extract the results bindings
     bindings = json_data["SAterms"]["geoDABterms"]["results"]["bindings"]
     
+    terms_not_found = json_data["SAterms"]["geoDABterms"]["search_terms_not_found"]
+
     # Create the simplified json response structure
     results = {
         "@context": [
@@ -209,9 +215,11 @@ def get_analysis_results():
         "@graph": []
     }
 
-    grouped_json = {}
+    grouped_json = {}    
+    stats = { "total_number_terms_found": 0 }
+    match_count = 0
 
-    for item in bindings:                            
+    for item in bindings:            
         matching_type = item.get('MethodSubType', {}).get('value')
 
         if matching_type not in match_type_required:
@@ -226,6 +234,8 @@ def get_analysis_results():
 
         if not (not category or category.lower() in add_list):
             continue
+        
+        match_count = match_count + 1
         
         match_property = item['MatchProperty']['value']
         
@@ -263,7 +273,9 @@ def get_analysis_results():
             ]
         }
 
-        results["@graph"].append(graph_item)
+        stats = { "total_number_terms_found": match_count }
+
+        results["@graph"].append(graph_item)     
 
     # Restructure the json by grouping results by query field
     grouped_results = defaultdict(list)
@@ -280,8 +292,14 @@ def get_analysis_results():
         ]
     }
 
+    grouped_json["stats"] = stats
+    grouped_json["search_terms_not_found"] = terms_not_found
+
     if len(bindings) > 0:
         return grouped_json
+
+    results["stats"] = stats
+    results["search_terms_not_found"] = terms_not_found
 
     return results
 
