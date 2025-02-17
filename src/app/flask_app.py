@@ -104,7 +104,7 @@ def get_analysis_results():
     sa_data = request.get_json(silent=True) or {}
 
     if not sa_data:
-        return make_response("Error JSON: No data provided or invalid JSON", 400)
+        return make_response("Error JSON: No data provided or invalid JSON", 200)
 
     #
     # category json field
@@ -112,11 +112,11 @@ def get_analysis_results():
     category = sa_data.get("category", "all")
     
     if isinstance(category, list):
-        return make_response("Error JSON value: category should be a string not array", 400)
+        return make_response("Error JSON: category should be a string not array", 200)
         
     
     if category not in categories_map:
-        return make_response(f"Error JSON value: Invalid '{category}' category", 400)
+        return make_response(f"Error JSON: Invalid '{category}' category", 200)
 
     category = categories_map[category]
         
@@ -125,18 +125,18 @@ def get_analysis_results():
     #
     vocabularies = sa_data.get("vocabularies", [])
     if not isinstance(vocabularies, list):
-        return make_response("Error JSON value: vocabularies should be an array list", 400)
+        return make_response("Error JSON: vocabularies should be an array list", 200)
 
     #
     # terms json field
     #
     if not sa_data.get("terms"):
-        return make_response(f"Error JSON value: {'No terms provided'}", 400)
+        return make_response(f"Error JSON: {'No terms provided'}", 200)
 
     max_terms = config["max_terms_limit"]
     terms = sa_data["terms"]
     if len(terms) > max_terms:
-        return make_response(f"Error JSON value: {'Number of terms cannot exceed'} {max_terms}", 400)
+        return make_response(f"Error JSON: {'Number of terms cannot exceed'} {max_terms}", 200)
 
     #
     # matchType json field
@@ -155,7 +155,7 @@ def get_analysis_results():
                 if item in match_type_map
         ]
         if not match_type_required:
-            return make_response(f"Error JSON value: {'Invalid match type'}", 400)
+            return make_response(f"Error JSON: {'Invalid match type'}", 200)
 
     #
     # exclude deprecated json field
@@ -179,7 +179,7 @@ def get_analysis_results():
                 if item in match_properties_map
         ]
         if not match_properties:
-            return make_response(f"Error JSON value: {'Invalid match property'}", 400)    
+            return make_response(f"Error JSON: {'Invalid match property'}", 200)
 
     responses = {}
     try:
