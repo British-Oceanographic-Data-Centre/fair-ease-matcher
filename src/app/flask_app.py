@@ -1,5 +1,8 @@
+import csv
+import io
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -15,13 +18,19 @@ from collections import defaultdict
 from src.analyse import run_methods, run_method_dab_terms
 from src.sparql_queries import get_vocabs_from_sparql_endpoint, send_query
 
+from src.csv2ttl import csv2sssom_ttl
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 config = None
 with open(Path(__file__).parent / "config.json", "r", encoding="utf-8") as file:
     config = json.load(file)
+
+user = os.getenv("SPARQL_USERNAME", "")
+passwd = os.getenv("SPARQL_PASSWORD", "")
+fuseki_endpoint = os.getenv("FUSEKI_ENDPOINT", "")
 
 app = Flask(__name__)
 for k, v in config.items():
@@ -57,7 +66,6 @@ match_type_map = {
     'wildcardMatch': 'Wildcard Match',
     'proximityMatch': 'Proximity Match',    
 }
-
 
 @app.route("/analyse", methods=["POST"])
 def get_analysis_results():
@@ -97,7 +105,7 @@ def get_analysis_results():
             "matchProperties": ["altLabel", "definition"]
         }
      
-    """
+    """    
     #
     # Verify we have some json
     #
@@ -628,10 +636,48 @@ async def get_vocabs_by_category(categoryName):
     return populate_json_template(categoryName, response.json())
 
 
+@app.route("/upload_mappings", methods=["POST"])
+def upload_mappings():
+    """Endpoint for converting CSV mappings to RDF turtle format and uploading 
+     to the Semantic Analyzer Knowledge Base.
 
+    Expected JSON:
+    {
+        "csv": "<raw CSV string>"
+    }
+    """
+    print(f"/upload_mappings endpoint. fuseki endpoint is {fuseki_endpoint}")
     
+    try:
+        data = request.get_json()
+        
+        if not data or "csv" not in data:
+            return jsonify({"error": "Missing 'csv' field in JSON."}), 400
 
+        raw_csv = data["csv"]
+        if not isinstance(raw_csv, str) or not raw_csv.strip():
+            return jsonify({"error": "'csv' must be a non-empty string."}), 400
 
+        # Parse CSV from string
+        csv_stream = io.StringIO(raw_csv)
+        csv_reader = csv.DictReader(csv_stream)
+
+        # Convert CSV to RDF Turtle format
+        ttl_data = csv2sssom_ttl(csv_reader)
+                
+        print(ttl_data)
+                
+        # Return the generated Turtle data
+        return jsonify({
+            "message": "Success."
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"Error. {str(e)}"
+        }), 500
+    
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8004)
