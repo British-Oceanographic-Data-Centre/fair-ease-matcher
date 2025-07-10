@@ -1,8 +1,24 @@
 import csv
 from datetime import datetime
 from pathlib import Path
+import random
+from typing import List
+
+
+def validate_header_csv(reader: csv.DictReader) -> List[str]:
+    """Validate that the csv has all the required headers."""
+    required_headers = ["subject_id", "object_id","subject_label","creator_id","predicate_id",
+                        "theme","mapping_justification","mapping_date"]
+    
+    # Check for missing headers
+    missing_headers = [header for header in required_headers if header not in reader.fieldnames]
+    if missing_headers:
+        return missing_headers
+
 
 def csv2sssom_ttl(reader: csv.DictReader) -> str:
+    """Convert csv to rdf ttl. """
+    
     # Define RDF prefixes
     prefixes = """@prefix sssom: <https://w3id.org/sssom/> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -13,6 +29,12 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
         @prefix dcat: <http://www.w3.org/dcat/> .
     """
 
+    # Validate required headers in CSV
+    missing_headers = validate_header_csv(reader)
+    
+    if validate_header_csv(reader):
+        raise ValueError(f"Missing headers: {missing_headers}")    
+        
     # MappingSet metadata
     mapping_set_id = "BCWODC17Platforms"
     mapping_set_desc = (
@@ -24,16 +46,22 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
     mapping_ids = []
             
     for row in reader:
+        
+        # Testing with random generated id, to avoid duplicate triples remove this later !
+        # rand = random.randint(1, 100)
+        # subj_id = row.get("subject_id", "").strip() + str(rand)
+        # obj_id = row.get("object_id", "").strip() + str(rand)
+        
         subj_id = row.get("subject_id", "").strip()
         obj_id = row.get("object_id", "").strip()
+                
         subj_label = row.get("subject_label", "").strip()
         creator_id = row.get("creator_id", "orcid:0000-0000-0000-0000").strip()
         predicate_id = row.get("predicate_id", "owl:sameAs").strip()
         theme = row.get("theme", "https://vocab.nerc.ac.uk/collection/L19/current/19/").strip()
         justification = row.get("mapping_justification", "semapv:ManualMapping").strip()
         map_date = row.get("mapping_date", today).strip()
-
-        #local_subj = subj_id.split("/")[-1]
+        
         local_obj = obj_id.split("/")[-1]        
         map_id = f"{subj_id}_{local_obj}"
         mapping_ids.append(f"local:{map_id}")

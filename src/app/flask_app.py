@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import traceback
+import requests
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
@@ -646,7 +647,7 @@ def upload_mappings():
         "csv": "<raw CSV string>"
     }
     """
-    print(f"/upload_mappings endpoint. fuseki endpoint is {fuseki_endpoint}")
+    logger.info(f"/upload_mappings endpoint. fuseki endpoint is {fuseki_endpoint}")
     
     try:
         data = request.get_json()
@@ -655,6 +656,7 @@ def upload_mappings():
             return jsonify({"error": "Missing 'csv' field in JSON."}), 400
 
         raw_csv = data["csv"]
+                
         if not isinstance(raw_csv, str) or not raw_csv.strip():
             return jsonify({"error": "'csv' must be a non-empty string."}), 400
 
@@ -665,8 +667,17 @@ def upload_mappings():
         # Convert CSV to RDF Turtle format
         ttl_data = csv2sssom_ttl(csv_reader)
                 
-        print(ttl_data)
-                
+        response = requests.post(
+            fuseki_endpoint,
+            params={"graph": "https://mappings"},
+            data=ttl_data.encode("utf-8"), 
+            headers={"Content-Type": "text/turtle"},
+            auth=(user, passwd)
+        )
+                            
+        if response.status_code != 200:            
+            raise Exception(f"Fuseki: {response.status_code} - {response.text}")
+                                        
         # Return the generated Turtle data
         return jsonify({
             "message": "Success."
