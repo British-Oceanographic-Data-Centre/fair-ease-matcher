@@ -653,12 +653,12 @@ def upload_mappings():
         data = request.get_json()
         
         if not data or "csv" not in data:
-            return jsonify({"error": "Missing 'csv' field in JSON."}), 400
+            return jsonify({"message": "Error. Missing 'csv' field in JSON."}), 400
 
         raw_csv = data["csv"]
                 
         if not isinstance(raw_csv, str) or not raw_csv.strip():
-            return jsonify({"error": "'csv' must be a non-empty string."}), 400
+            return jsonify({"message": "Error. 'csv' must be a non-empty string."}), 400
 
         # Parse CSV from string
         csv_stream = io.StringIO(raw_csv)
