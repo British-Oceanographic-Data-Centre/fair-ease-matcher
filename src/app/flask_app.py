@@ -666,7 +666,7 @@ def upload_mappings():
 
         # Convert CSV to RDF Turtle format
         ttl_data = csv2sssom_ttl(csv_reader)
-                
+
         response = requests.post(
             fuseki_endpoint,
             params={"graph": "https://mappings"},

@@ -67,7 +67,8 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
         mapping_ids.append(f"local:{map_id}")
 
         block = f"""local:{map_id} a sssom:Mapping; 
-            sssom:subject_id local:{subj_id}; 
+            sssom:subject_id local:{subj_id};
+            sssom:subject_title "{subj_id}"^^xsd:string;
             sssom:creator_id "{creator_id}"^^xsd:string ;
             sssom:mapping_date "{map_date}"^^xsd:date ;
             sssom:mapping_justification {justification};
@@ -86,4 +87,5 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
 
     # Final RDF output
     output = prefixes + mapping_set_block + "\n".join(mapping_entries)        
+    
     return output
