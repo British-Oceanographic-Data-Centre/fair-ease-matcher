@@ -1,0 +1,77 @@
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX sssom: <https://w3id.org/sssom/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX dcat: <https://www.w3.org/ns/dcat#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX ex: <http://www.example.org/resources#>
+PREFIX text: <http://jena.apache.org/text#>
+PREFIX sdo: <https://schema.org/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT
+  ?SearchTerm
+  ?MatchURI
+  (SAMPLE(?MatchPropertyAll) AS ?MatchProperty)
+  ?MatchTerm
+  ?Container
+  ?ContainerLabel
+  ?MethodSubType
+  ?Status
+  (GROUP_CONCAT(DISTINCT(?VocabCategory); separator=", ") AS ?Categories)
+WHERE {
+  VALUES ?EscapedSearchTerm {
+    {%- for term in terms %}
+      "\"{{ term }}\"~10"
+    {%- endfor %}
+  }
+  (?URI ?Weight ?MatchTerm ?graph ?MatchProp)
+    text:query (
+      sssom:subject_title
+      sssom:subject_label
+      ?EscapedSearchTerm
+      5
+    ) .
+
+  GRAPH <https://mappings> {   
+     ?URI dcat:theme ?theme_uri .
+    ?URI sssom:object_id ?MatchURI .
+  }
+   ?theme_uri skos:prefLabel ?VocabCategory .
+
+ OPTIONAL {
+    ?OptContainer skos:member ?MatchURI ;
+                  skos:prefLabel ?OptContainerPrefLabel ;
+                  dcterms:title ?OptContainerTitle .
+  }
+
+  OPTIONAL {
+    ?URI owl:deprecated ?isDeprecated .
+  }
+
+  BIND(
+    IF(COALESCE(?isDeprecated, "false") = "false", "Accepted", "Deprecated") AS ?Status
+  )
+
+  BIND(COALESCE(?OptContainer, "") AS ?Container)
+  BIND(COALESCE(?OptContainerPrefLabel, ?OptContainerTitle, "") AS ?ContainerLabel)
+
+  BIND(REPLACE(?EscapedSearchTerm, "\\\\", "") AS ?SearchTermRaw)
+  BIND(REPLACE(?SearchTermRaw, "\"", "") AS ?CompletelyUnescaped)
+
+  BIND("Exact Match" AS ?MethodSubType)
+  BIND(COALESCE(?prop_label, ?MatchProp) AS ?MatchPropertyAll)
+  BIND(COALESCE(?CompletelyUnescaped, ?SearchTermRaw) AS ?SearchTerm)
+}
+GROUP BY
+  ?g
+  ?MatchURI
+  ?MatchTerm
+  ?SearchTerm
+  ?Container
+  ?ContainerLabel
+  ?MethodSubType
+  ?Status
+ORDER BY
+  DESC(?MethodSubType)
+  DESC(?Weight)
