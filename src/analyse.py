@@ -55,14 +55,11 @@ def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = F
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     all_bindings, head = run_all_queries(all_queries)
     
-    # sssom mappings    
-    
-    logger.info('sssom mapping query analyse from full xml ==========================================================')
-    
+    # sssom mappings
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(mappings)')                            
+        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 
@@ -180,13 +177,11 @@ def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes
     all_bindings, head = run_all_queries(all_queries)
 
     # sssom mappings    
-    
-    logger.info('sssom mapping query analyse from Netcdf ==========================================================')
-    
+
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(mappings)')                            
+        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 
@@ -276,11 +271,9 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     remove_exact_and_uri_matches(all_bindings, all_metadata_elems)
         
     # sssom mappings
-    
-    logger.info('sssom mapping query analyse from geodab terms ==========================================================')
-    
+
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)                                            
-    bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(mappings)')
+    bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')
                 
     if bindings_sssom_mappings:        
         all_bindings.extend(bindings_sssom_mappings)
@@ -376,7 +369,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(mappings)')                            
+        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 

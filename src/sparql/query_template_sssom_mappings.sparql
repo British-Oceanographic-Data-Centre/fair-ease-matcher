@@ -30,7 +30,6 @@ WHERE {
       sssom:subject_title
       sssom:subject_label
       ?EscapedSearchTerm
-      5
     ) .
 
   GRAPH <https://mappings> {   
