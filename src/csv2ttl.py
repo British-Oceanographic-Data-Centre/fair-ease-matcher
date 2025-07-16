@@ -26,7 +26,7 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
         @prefix semapv: <https://w3id.org/semapv/vocab/>  .
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        @prefix dcat: <http://www.w3.org/dcat/> .
+        @prefix dcat: <http://www.w3.org/ns/dcat#> .
     """
 
     # Validate required headers in CSV
@@ -45,13 +45,7 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
     mapping_entries = []
     mapping_ids = []
             
-    for row in reader:
-        
-        # Testing with random generated id, to avoid duplicate triples remove this later !
-        # rand = random.randint(1, 100)
-        # subj_id = row.get("subject_id", "").strip() + str(rand)
-        # obj_id = row.get("object_id", "").strip() + str(rand)
-        
+    for row in reader:        
         subj_id = row.get("subject_id", "").strip()
         obj_id = row.get("object_id", "").strip()
                 
