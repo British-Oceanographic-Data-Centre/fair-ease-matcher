@@ -1,7 +1,6 @@
 import csv
 from datetime import datetime
 from pathlib import Path
-import random
 from typing import List
 
 
@@ -34,18 +33,18 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
     
     if validate_header_csv(reader):
         raise ValueError(f"Missing headers: {missing_headers}")    
-        
-    # MappingSet metadata
-    mapping_set_id = "BCWODC17Platforms"
-    mapping_set_desc = (
-        "Manual Mappings for Blue Cloud project between WOD platforms and C17 codes"
-    )
+    
+    rows = list(reader)
 
+    # MappingSet metadata    
+    mapping_set_id = rows[0].get("mapping_set_id", "BCWODC17Platforms").strip()
+    mapping_set_description = rows[0].get("mapping_set_description", "Manual Mappings").strip()
+            
     today = datetime.today().strftime('%Y-%m-%d')
     mapping_entries = []
     mapping_ids = []
             
-    for row in reader:        
+    for row in rows:
         subj_id = row.get("subject_id", "").strip()
         obj_id = row.get("object_id", "").strip()
                 
@@ -76,7 +75,7 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
         mappings_list = ",".join(mapping_ids)
         mapping_set_block = f"""local:{mapping_set_id} a sssom:MappingSet;
                             sssom:mapping_set_id "{mapping_set_id}";
-                            sssom:mapping_set_description "{mapping_set_desc}";
+                            sssom:mapping_set_description "{mapping_set_description}";
                             sssom:mappings {mappings_list} .\n\n"""
 
     # Final RDF output

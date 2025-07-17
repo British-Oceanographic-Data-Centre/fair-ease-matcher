@@ -594,8 +594,12 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False,
             terms = [escape_for_lucene_and_sparql(term) for term in terms]
     # Render the template with the necessary parameters
 
+    # Add a weight_factor fudge to return all results for a single term. 
+    # The value 5 is for speeding up query  (but returns less results) to prevent server timeout and memory errors
+    weight_factor = '' if len(terms) == 1 else '5' 
+    
     query = template.render(
-        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,
+        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,weight_factor=weight_factor,
         allowed_vocabs=[f"<{x}>" for x in allowed_vocabs], match_properties=match_properties
     )  # template imported at module level.
     queries.append(query)        
@@ -615,8 +619,12 @@ def create_query_sssom_mappings(predicate, terms, query_type, theme_uris=None, p
             terms = [escape_for_lucene_and_sparql(term) for term in terms]
     # Render the template with the necessary parameters
 
+    # Add a weight_factor fudge to return all results for a single term. 
+    # The value 5 is for speeding up query  (but returns less results) to prevent server timeout and memory errors
+    weight_factor = '' if len(terms) == 1 else '5'
+
     query = template.render(
-        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,
+        predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,weight_factor=weight_factor,
         allowed_vocabs=[f"<{x}>" for x in allowed_vocabs], match_properties=match_properties
     )  # template imported at module level.
     queries.append(query)        

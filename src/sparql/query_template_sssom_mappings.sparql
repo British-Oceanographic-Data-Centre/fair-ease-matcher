@@ -30,6 +30,7 @@ WHERE {
       sssom:subject_title
       sssom:subject_label
       ?EscapedSearchTerm
+      {{ weight_factor }}
     ) .
 
   GRAPH <https://mappings> {   
