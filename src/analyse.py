@@ -595,7 +595,7 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False,
     # Render the template with the necessary parameters
 
     # Add a weight_factor fudge to return all results for a single term. 
-    # The value 5 is for speeding up query  (but returns less results) to prevent server timeout and memory errors
+    # The value 5 is for multiple terms - speeding up query  (but returns less results) to prevent server timeout and memory errors
     weight_factor = '' if len(terms) == 1 else '5' 
     
     query = template.render(
