@@ -1,7 +1,7 @@
 PREFIX dc: <http://purl.org/dc/elements/1.1/>
 PREFIX sssom: <https://w3id.org/sssom/>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-PREFIX dcat: <https://www.w3.org/ns/dcat#>
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX ex: <http://www.example.org/resources#>
 PREFIX text: <http://jena.apache.org/text#>
