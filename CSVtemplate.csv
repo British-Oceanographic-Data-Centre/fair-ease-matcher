@@ -1,0 +1,3 @@
+mapping_set_id,mapping_set_description,subject_id,subject_label,predicate_id,object_id,mapping_justification,creator_id,mapping_date,theme
+FEWODPlatformsII,Manual Mappings for FAIR-EASE,2608,AYLWIN,owl:sameAs,http://vocab.nerc.ac.uk/collection/C17/current/319A/,semapv:ManualMapping,https://orcid.org/0000-0001-6559-4178,10/07/2025,http://vocab.nerc.ac.uk/collection/L19/current/SDNKG04/
+,,6313,AYTODOR,owl:sameAs,http://vocab.nerc.ac.uk/collection/C17/current/90AY/,semapv:ManualMapping,https://orcid.org/0000-0001-6559-4178,10/07/2025,http://vocab.nerc.ac.uk/collection/L19/current/SDNKG04/
