@@ -472,6 +472,7 @@ async def get_vocab_list():
     }} limit 100
     """
     async_client = AsyncClient()
+    
     response = await send_query(query.format(category), mediatype="application/json", client=async_client)
     await response.aread()
     return response.json()
@@ -675,7 +676,7 @@ def upload_mappings():
             auth=(user, passwd)
         )
                             
-        if response.status_code != 200:            
+        if response.status_code not in (200, 201):
             raise Exception(f"Fuseki: {response.status_code} - {response.text}")
                                         
         # Return the generated Turtle data

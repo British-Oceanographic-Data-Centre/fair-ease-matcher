@@ -54,8 +54,8 @@ def csv2sssom_ttl(reader: csv.DictReader) -> str:
         theme = row.get("theme", "https://vocab.nerc.ac.uk/collection/L19/current/19/").strip()
         justification = row.get("mapping_justification", "semapv:ManualMapping").strip()
         map_date = row.get("mapping_date", today).strip()
-        
-        local_obj = obj_id.split("/")[-1]        
+
+        local_obj = [part for part in obj_id.split("/") if part][-1]
         map_id = f"{subj_id}_{local_obj}"
         mapping_ids.append(f"local:{map_id}")
 
