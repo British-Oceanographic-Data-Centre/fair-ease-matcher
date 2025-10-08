@@ -1,43 +1,31 @@
-# Components
+# Fair-ease-matcher
 
-# src folder
-Contains code for the application. Much of this code is no longer used and needs to be cleaned up. Do not spend effort
-trying to understand it until it has been cleaned up - I have mentioned the key files that are used below.
+The backend for the Semantic Analyzer <https://semantics.bodc.ac.uk/>
 
-The Python environment and requirements are handled using [Poetry](https://python-poetry.org/) - please install poetry and run `poetry install` to 
-setup the environment/requirements. See the Dockerfile for an example of this.
-# src/app/flask_app.py
+This repository has been forked from <https://github.com/Kurrawong/fair-ease-matcher> and is now
+based on the Python FastAPI framework for faster and more scalable APIs.
 
-The flask application used to run the analyser at https://99koor0nmj.execute-api.ap-southeast-2.amazonaws.com/production/process_metadata
-The analyser is running as an AWS Lambda function.
-The analyser is packaged/deployed using Zappa. Zappa makes it easy to deploy python applications on AWS Lambda. The Zappa config for this is in `./zappa_settings.json`
+The production API documentation can be accessed at <https://semantics.bodc.ac.uk/api/docs>
 
-# src/app/fastapi_app.py
+## Running locally (Linux based OS)
 
-FastAPI is an async equivalent to Flask. It is what I would have used if not deploying the application on AWS Lambda. 
-Async apps on AWS Lambda are possible but have some pitfalls. The FastAPI app is not deployed anywhere.
+### Environment variables
 
-# src/app/main.py
+Sparql requests are made to BODC's servers, therefore the following environment variables 
+are required (For access refer to <https://gitlab.com/nocacuk/BODC/software/fuseki-fair-ease/>)
 
-Equivalent to `flask_app.py` but to just run the script on local files.
+- SPARQL_ENDPOINT
+- SPARQL_USERNAME
+- SPARQL_PASSWORD
 
-# compose directory
-Can be used to process the Vocab data locally and run a Fuseki instance. **You will need a copy of the vocab files from 
-me - these are in S3 and too large to sensibly check in to version control - these can be provided on request**
+On terminal run (Install any missing dependencies reported)
 
-NB the compose app is *not* set up to run the analyser itself. You can run the analyser via and IDE and point it to 
-Fuseki running in compose.
+`uvicorn src.app.fastapi_app:app --host localhost --port=8007`
 
-# Dockerfile
-Not currently used.
-Was used to build a docker image for the fastapi version of the analyser.
-Expect this will require some minor changes but will work again with the flask or fastapi versions.
+Access and test api <http://localhost:8007/api/docs>
 
-# notebooks directory
-Not currently used.
-Was used to demonstrate an alternate version of the analyser using LLMs.
+## Future Development - Notes
 
-# aws directory
-Not currently used.
-Contains information on connecting to an AWS Neptune instance that was previously stood up for the LLM version. This 
-instance has now been removed as Fuseki is online.
+- Clean up of code - lots of redundancy from original forked repo.
+- Dockerize
+- Incoporate Tox and Poetry for Test, Dependency and Build management
