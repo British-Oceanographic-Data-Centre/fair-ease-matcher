@@ -9,7 +9,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import httpx
-from flask import current_app as app
 from httpx import AsyncClient
 from jinja2 import Template
 from netCDF4 import Dataset
@@ -24,6 +23,8 @@ from src.xml_extraction import (
     extract_from_content_info,
     extract_instruments_platforms_from_acquisition_info,
 )
+
+from src.config_loader import config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -47,19 +48,19 @@ themes_map = {
 }
 
 
-def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False, match_properties=None):        
+async def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = False, match_properties=None):        
     types_to_text_original, types_to_text_with_variants = extract_full_xml(xml_string)
     mapping = {"all": [("uris", None)]}
     collected_t2t_with_variants = collect_types(types_to_text_with_variants)
     query_args = get_query_args(collected_t2t_with_variants, mapping, restrict_to_themes)
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
-    all_bindings, head = run_all_queries(all_queries)
+    all_bindings, head = await run_all_queries(all_queries)
     
     # sssom mappings
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
+        bindings_sssom_mappings, head = await run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 
@@ -91,7 +92,6 @@ def analyse_from_full_xml(xml_string, restrict_to_themes, exclude_deprecated = F
             uri_matches.append(binding["MatchURI"]["value"])
     return results, uri_matches
 
-
 def collect_types(types_to_text: dict):
     # Using a dictionary to group texts by their guessed_type
     result_dict = {"uris": [], "strings": [], "identifiers": []}
@@ -108,8 +108,7 @@ def collect_types(types_to_text: dict):
     result = {"All": result_dict}
     return result
 
-
-def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes=None, match_properties=None):
+async def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes=None, match_properties=None):
     # Use the memory argument to read from file_bytes
     rootgrp = Dataset(filename=None, mode="r", memory=file_bytes, format="NETCDF3")
     # try get URNs
@@ -174,14 +173,14 @@ def analyse_from_netcdf(file_bytes, exclude_deprecated=False, restrict_to_themes
 
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
-    all_bindings, head = run_all_queries(all_queries)
+    all_bindings, head = await run_all_queries(all_queries)
 
     # sssom mappings    
 
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
+        bindings_sssom_mappings, head = await run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 
@@ -234,7 +233,7 @@ def get_terms_elements(terms, restrict_to_theme):
         all_terms_elements[theme_key]['strings'] = terms    
     return all_terms_elements
 
-def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None, match_properties=None) -> dict:                
+async def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False, restrict_to_vocabs = None, match_properties=None) -> dict:                
 
     terms_clean = [el.replace('"', "\'").replace("\n", " ") for el in terms]
 
@@ -263,7 +262,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_theme, restrict_to_vocabs=restrict_to_vocabs)    
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)                                    
                 
-    all_bindings, head = run_all_queries(all_queries)            
+    all_bindings, head = await run_all_queries(all_queries)            
     
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
     
@@ -273,7 +272,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     # sssom mappings
 
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)                                            
-    bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')
+    bindings_sssom_mappings, head = await run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')
                 
     if bindings_sssom_mappings:        
         all_bindings.extend(bindings_sssom_mappings)
@@ -299,7 +298,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     proximity_queries = generate_queries(proximity_query_args, exclude_deprecated=exclude_deprecated, proximity=True, match_properties=match_properties)
         
     if proximity_queries:
-        proximity_bindings, _ = run_all_queries(proximity_queries)
+        proximity_bindings, _ = await run_all_queries(proximity_queries)
                                 
         all_bindings.extend(proximity_bindings)
         # Map MatchProperty URIs to readable labels
@@ -321,7 +320,7 @@ def analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=False
     
     return results
 
-def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False, match_properties=None, uri_matches=None) -> dict:
+async def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_deprecated=False, match_properties=None, uri_matches=None) -> dict:
     root = ET.fromstring(xml)
     logger.info("Obtained root from remote XML.")
     all_metadata_elems = extract_from_all(root)
@@ -356,7 +355,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
 
     query_args = get_query_args(all_metadata_elems, mapping, restrict_to_themes)
     all_queries = generate_queries(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)            
-    all_bindings, head = run_all_queries(all_queries)
+    all_bindings, head = await run_all_queries(all_queries)
     # Map MatchProperty URIs to readable labels
     all_bindings = map_match_property_to_label(all_bindings)
     exact_or_uri_matches = {k: False for k in all_metadata_elems}
@@ -369,7 +368,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     all_queries_sssom_mappings = generate_queries_sssom_mappings(query_args, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     
     if all_queries_sssom_mappings:
-        bindings_sssom_mappings, head = run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
+        bindings_sssom_mappings, head = await run_all_queries(all_queries_sssom_mappings, graph='(Mappings)')                            
         if bindings_sssom_mappings:        
             all_bindings.extend(bindings_sssom_mappings)
 
@@ -396,7 +395,7 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     )
     proximity_queries = generate_queries(proximity_query_args, proximity=True, exclude_deprecated=exclude_deprecated, match_properties=match_properties)
     if proximity_queries:
-        proximity_bindings, _ = run_all_queries(proximity_queries)
+        proximity_bindings, _ = await run_all_queries(proximity_queries)
         all_bindings.extend(proximity_bindings)
         # Map MatchProperty URIs to readable labels
         all_bindings = map_match_property_to_label(all_bindings)
@@ -418,12 +417,13 @@ def analyse_from_xml_structure(xml, threshold, restrict_to_themes, exclude_depre
     return results
 
 
-def run_all_queries(all_queries, graph=''):    
+async def run_all_queries(all_queries, graph=''):    
     all_bindings = []
     head = {}
     
-    all_results = asyncio.run(run_queries(all_queries))
-    
+    # all_results = asyncio.run(run_queries(all_queries))
+    all_results = await run_queries(all_queries)
+            
     for query_type, result in all_results:
         head, bindings = flatten_results(result, query_type, graph)
         all_bindings.extend(bindings)
@@ -499,8 +499,6 @@ def remove_uri_matches_from_other_matches(all_bindings):
         or result["MatchURI"]["value"] not in uri_match_uris
     ]
 
-
-
 def remove_exact_and_uri_matches(all_bindings, all_metadata_elems):
     """Remove exact and URI matches from the results."""
     exact_matches_uris = [
@@ -508,8 +506,6 @@ def remove_exact_and_uri_matches(all_bindings, all_metadata_elems):
         for result in all_bindings
         if result.get("MethodSubType", {}).get("value") == "Exact Match"
     ]
-
-
 
     # Rebuild the list excluding the exact matches and URI matches that should be removed
     all_bindings[:] = [
@@ -525,15 +521,12 @@ def remove_exact_and_uri_matches(all_bindings, all_metadata_elems):
         if result.get("MethodSubType", {}).get("value") == "URI Match"
     ]
 
-
     all_bindings[:] = [
         result
         for result in all_bindings
         if result.get("MethodSubType", {}).get("value") in ["Exact Match", "URI Match"]
         or result["MatchURI"]["value"] not in uri_matches
     ]
-
-
 
 async def run_queries(queries):            
     async with AsyncClient(auth=(user, passwd) if user else None, timeout=30) as client:
@@ -597,7 +590,9 @@ def create_query(predicate, terms, query_type, theme_uris=None, proximity=False,
     # Add a weight_factor fudge to return all results for a single term. 
     # The value 5 is for multiple terms - speeding up query  (but returns less results) to prevent server timeout and memory errors
     weight_factor = '' if len(terms) == 1 else '5' 
-    
+   
+    logger.info(f"weight_factor {weight_factor}")
+
     query = template.render(
         predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,weight_factor=weight_factor,
         allowed_vocabs=[f"<{x}>" for x in allowed_vocabs], match_properties=match_properties
@@ -623,15 +618,14 @@ def create_query_sssom_mappings(predicate, terms, query_type, theme_uris=None, p
     # The value 5 is for speeding up query  (but returns less results) to prevent server timeout and memory errors
     weight_factor = '' if len(terms) == 1 else '5'
 
+    logger.info(f"weight_factor {weight_factor}")
+
     query = template.render(
         predicate=predicate, terms=terms, proximity=proximity, theme_uris=theme_uris, exclude_deprecated=exclude_deprecated,weight_factor=weight_factor,
         allowed_vocabs=[f"<{x}>" for x in allowed_vocabs], match_properties=match_properties
     )  # template imported at module level.
     queries.append(query)        
     return queries
-
-
-
 
 def escape_for_lucene_and_sparql(query):
     # First, escape the Lucene special characters.
@@ -641,7 +635,6 @@ def escape_for_lucene_and_sparql(query):
     # Then, double escape the backslashes for SPARQL.
     sparql_escaped = lucene_escaped.replace("\\", "\\\\")
     return sparql_escaped
-
 
 def get_root_from_remote(xml_url):
     try:
@@ -666,7 +659,6 @@ def get_root_from_remote(xml_url):
         logger.error(f"Failed to parse XML from {xml_url}. Error: {str(e)}")
         raise
 
-
 def extract_from_all(root):
     all_dicts = []
     all_dicts.append(
@@ -679,33 +671,33 @@ def extract_from_all(root):
     merged = merge_dicts(all_dicts)
     return merged
 
-
-def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, exclude_deprecated = False, restrict_to_vocabs = None, match_properties=None):
+async def run_method_dab_terms(doc_name, results, terms, restrict_to_theme, exclude_deprecated = False, restrict_to_vocabs = None, match_properties=None):
     results[doc_name] = {}     
     results[doc_name][
-        app.config["Methods"]["terms"]["source"]
-    ] = analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=exclude_deprecated, restrict_to_vocabs=restrict_to_vocabs, match_properties=match_properties)
+        config["Methods"]["terms"]["source"]
+    ] = await analyse_from_geodab_terms(terms, restrict_to_theme, exclude_deprecated=exclude_deprecated, restrict_to_vocabs=restrict_to_vocabs, match_properties=match_properties)
     
-def run_methods(
+async def run_methods(
         doc_name, methods, results, threshold, xml_string, restrict_to_themes, method_type, exclude_deprecated=False, match_properties=None
 ):    
     results[doc_name] = {}
     if method_type == "XML":  # run specified xml methods
         uri_matches = None
         if "full" in methods:
-            full_results, uri_matches = analyse_from_full_xml(
+            full_results, uri_matches = await analyse_from_full_xml(
                 xml_string, 
                 restrict_to_themes, 
                 exclude_deprecated=exclude_deprecated, 
                 match_properties=match_properties
             )
+
             results[doc_name][
-                    app.config["Methods"]["metadata"]["full"]
+                    config["Methods"]["metadata"]["full"]
                 ] = full_results
         if "xml" in methods:
             results[doc_name][
-                app.config["Methods"]["metadata"]["xml"]
-            ] = analyse_from_xml_structure(
+                config["Methods"]["metadata"]["xml"]
+            ] = await analyse_from_xml_structure(
                 xml_string,
                 threshold,
                 restrict_to_themes,
@@ -716,8 +708,8 @@ def run_methods(
 
     if method_type == "NETCDF":  # run netCDF methods - currently just the one
         results[doc_name][
-            app.config["Methods"]["netcdf"]["netcdf"]
-        ] = analyse_from_netcdf(xml_string, restrict_to_themes=restrict_to_themes, exclude_deprecated=exclude_deprecated)
+            config["Methods"]["netcdf"]["netcdf"]
+        ] = await analyse_from_netcdf(xml_string, restrict_to_themes=restrict_to_themes, exclude_deprecated=exclude_deprecated)
 
 def extract_urns_from_netcdf(rootgrp: Dataset, var_name: str):
     var_urns = []
@@ -726,7 +718,6 @@ def extract_urns_from_netcdf(rootgrp: Dataset, var_name: str):
         if urn_or_none:
             var_urns.append(urn_or_none)
     return var_urns
-
 
 def extract_text_from_net_cdf(rootgrp: Dataset, var_name: str):
     var_text = []
