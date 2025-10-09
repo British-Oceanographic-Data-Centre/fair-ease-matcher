@@ -7,6 +7,9 @@ import time
 from typing import Any, Dict
 from urllib.parse import urlparse
 from collections import defaultdict
+
+from pydantic import BaseModel
+
 import traceback
 import requests
 
@@ -129,7 +132,40 @@ def populate_json_template(category_name: str, json_results: dict) -> dict:
 # Endpoints
 # -------------------------
 
-@router.post("/analyse", status_code=200)
+class ErrorResponse(BaseModel):
+    detail: str
+
+@router.post("/analyse", status_code=200,
+
+responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Bad Request – The input data is invalid (e.g., missing terms, invalid category, or wrong types).",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "no_data": {"summary": "Missing input", "value": {"detail": "No data provided or invalid JSON"}},
+                        "invalid_category": {"summary": "Bad category", "value": {"detail": "Invalid category 'x', see ~/api/categories for valid categories"}},
+                        "no_terms": {"summary": "Empty terms", "value": {"detail": "No terms provided"}},
+                        "too_many_terms": {"summary": "Too many terms", "value": {"detail": "Number of terms cannot exceed 300"}},
+                        "invalid_match_type": {"summary": "Bad match type", "value": {"detail": "Invalid match type, see ~/api/matchType for valid matchTypes"}},
+                        "invalid_match_property": {"summary": "Bad match property", "value": {"detail": "Invalid match property, see ~/api/matchproperties for valid match properties"}},
+                    }
+                }
+            },
+        },
+        500: {
+            "model": ErrorResponse,
+            "description": "Internal Server Error - Unexpected failure during analysis.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Internal error occurred while processing request"}
+                }
+            },
+        },
+    },             
+
+)
 async def analyse(sa_data: Dict[str, Any] = Body(
          ...,
          example={
@@ -149,7 +185,7 @@ async def analyse(sa_data: Dict[str, Any] = Body(
     - **vocabularies** *(optional)*  list, default []
     - **terms** *(required)*  list of terms
     - **exclude_deprecated** *(optional)*  boolean, default false
-    - **matchType** *(optional)*  list, default ["exactMatch"]
+    - **matchType** *(optional)*  list, (see ~/api/matchType) default ["exactMatch"]
     - **matchProperties** *(optional)*  list, default ["altLabel", "definition", "preflabel", "identifier"]
      
     """        
