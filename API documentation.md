@@ -2,6 +2,8 @@
 
 ## API Developer Documentation
 
+Swagger / OpenAPI documenation available at <https://semantics.bodc.ac.uk/api/docs>
+
 ### Base URL
 All API endpoints are accessible under the following base URL:
 
