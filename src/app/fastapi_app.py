@@ -1,4 +1,4 @@
-"""Endpoints for the Semantic Analyzer."""
+"""Endpoints for the Semantic Analyser."""
 import csv
 import io
 import logging
@@ -30,7 +30,7 @@ passwd = os.getenv("SPARQL_PASSWORD", "")
 fuseki_endpoint = os.getenv("FUSEKI_ENDPOINT", "")
 
 app = FastAPI(
-    title="Semantic Analyzer API",
+    title="Semantic Analyser API",
     docs_url="/api/docs",    
     openapi_url="/api/openapi.json"
 )
@@ -177,11 +177,11 @@ async def analyse(sa_data: Dict[str, Any] = Body(
          }        
      )
  ):
-    """ Analyzes terms based on the provided match criteria.
+    """ Analyses terms based on the provided match criteria.
 
     Fields in JSON request body:
 
-    - **category** *(optional)*  restricted values (see ~/api/categories), default ""
+    - **category** *(optional)*  restricted values (default all categories from ~/api/categories)
     - **vocabularies** *(optional)*  list, default []
     - **terms** *(required)*  list of terms
     - **exclude_deprecated** *(optional)*  boolean, default false
@@ -192,7 +192,8 @@ async def analyse(sa_data: Dict[str, Any] = Body(
     if not sa_data:
         raise HTTPException(status_code=400, detail="No data provided or invalid JSON")
 
-    category = sa_data.get("category", "all")
+    category = sa_data.get("category") or "all"
+
     if isinstance(category, list) or category not in categories_map:
         raise HTTPException(status_code=400, detail=f"Invalid category '{category}'")
     category = categories_map[category]
