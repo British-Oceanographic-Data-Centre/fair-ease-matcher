@@ -529,7 +529,7 @@ def remove_exact_and_uri_matches(all_bindings, all_metadata_elems):
     ]
 
 async def run_queries(queries):            
-    async with AsyncClient(auth=(user, passwd) if user else None, timeout=30) as client:
+    async with AsyncClient(auth=(user, passwd) if user else None, timeout=180) as client:
         return await asyncio.gather(
             *[
                 tabular_query_to_dict(query, query_type, client)
