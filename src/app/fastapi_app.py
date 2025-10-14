@@ -186,7 +186,7 @@ async def analyse(sa_data: Dict[str, Any] = Body(
     - **terms** *(required)*  list of terms
     - **exclude_deprecated** *(optional)*  boolean, default false
     - **matchType** *(optional)*  list, (see ~/api/matchType) default ["exactMatch"]
-    - **matchProperties** *(optional)*  list, default ["altLabel", "definition", "preflabel", "identifier"]
+    - **matchProperties** *(optional)*  list, restricted values (default all properties from ~/api/matchproperties)
      
     """        
     if not sa_data:
