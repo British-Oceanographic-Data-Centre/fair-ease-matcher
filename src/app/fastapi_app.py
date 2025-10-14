@@ -181,12 +181,12 @@ async def analyse(sa_data: Dict[str, Any] = Body(
 
     Fields in JSON request body:
 
-    - **category** *(optional)*  restricted values (default all categories from ~/api/categories)
+    - **category** *(optional)*  list, restricted values (default all categories from ~/api/categories)
     - **vocabularies** *(optional)*  list, default []
     - **terms** *(required)*  list of terms
     - **exclude_deprecated** *(optional)*  boolean, default false
     - **matchType** *(optional)*  list, (see ~/api/matchType) default ["exactMatch"]
-    - **matchProperties** *(optional)*  list, default ["altLabel", "definition", "preflabel", "identifier"]
+    - **matchProperties** *(optional)*  list, restricted values (default all properties from ~/api/matchproperties)
      
     """        
     if not sa_data:
