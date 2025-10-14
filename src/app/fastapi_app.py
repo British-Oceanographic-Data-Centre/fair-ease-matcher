@@ -181,7 +181,7 @@ async def analyse(sa_data: Dict[str, Any] = Body(
 
     Fields in JSON request body:
 
-    - **category** *(optional)*  list, restricted values (default all categories from ~/api/categories)
+    - **category** *(optional)*  restricted values (default all categories from ~/api/categories)
     - **vocabularies** *(optional)*  list, default []
     - **terms** *(required)*  list of terms
     - **exclude_deprecated** *(optional)*  boolean, default false
